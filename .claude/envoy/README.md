@@ -19,6 +19,7 @@ CLI for agent-scoped external tool access. Keeps file contents OUT of Claude's c
 | `perplexity research` | Deep research with citations (pre-synthesized) |
 | `tavily search` | Web search, returns URLs and snippets |
 | `tavily extract` | Extract full content from URLs |
+| `xai search` | X/Twitter search for community opinions, alternatives, discussions |
 
 ### Vertex (Gemini)
 
@@ -42,6 +43,7 @@ CLI for agent-scoped external tool access. Keeps file contents OUT of Claude's c
 **Research:**
 - Pre-synthesized findings → `perplexity research`
 - Raw sources for processing → `tavily search` → `tavily extract`
+- Community opinions/alternatives → `xai search` (can build on previous findings with `--context`)
 
 **Vertex:**
 - Arbitrary Gemini query → `vertex ask`
@@ -60,6 +62,7 @@ These tools read files directly and pass to external LLMs. Claude only receives 
 | `PERPLEXITY_API_KEY` | perplexity | Perplexity API key |
 | `TAVILY_API_KEY` | tavily | Tavily API key |
 | `VERTEX_API_KEY` | vertex | Google AI API key (Vertex Express) |
+| `X_AI_API_KEY` | xai | xAI Grok API key |
 | `ENVOY_TIMEOUT_MS` | optional | Global timeout (default: 120000) |
 
 ## Discovery

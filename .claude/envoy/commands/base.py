@@ -44,8 +44,12 @@ class BaseCommand(ABC):
         pass
 
     @abstractmethod
-    def execute(self, **kwargs) -> dict:
-        """Execute the command and return result dict."""
+    def execute(self, *args, **kwargs) -> dict:
+        """Execute the command and return result dict.
+        
+        Subclasses should define explicit parameters for clarity,
+        e.g.: def execute(self, query: str, max_results: int = None, **kwargs)
+        """
         pass
 
     def success(self, data: dict, metadata: Optional[dict] = None) -> dict:

@@ -1,6 +1,9 @@
 """Tavily API commands - search and extract for agentic workflows."""
+# pyright: reportAttributeAccessIssue=false 
 
 import os
+from typing import Optional
+
 import requests
 from .base import BaseCommand
 
@@ -15,7 +18,7 @@ class TavilySearchCommand(BaseCommand):
         parser.add_argument("query", help="Search query")
         parser.add_argument("--max-results", type=int, help="Max results (API default: 5, max: 20)")
 
-    def execute(self, query: str, max_results: int = None, **kwargs) -> dict:
+    def execute(self, query: str, max_results: Optional[int] = None, **kwargs) -> dict:
         api_key = os.environ.get("TAVILY_API_KEY")
         if not api_key:
             return self.error("auth_error", "TAVILY_API_KEY not set")

@@ -4,11 +4,17 @@
 
 Main agent: SOLE code modifier. Subagents: READ-ONLY, return needed information/implementation.
 
+## Planning
+
+When hook STDOUT requests planning mode, run `/plan` immediately.
+
 ## Main Agent: Delegation First
 
-Main agent should NEVER use skills - skills are for subagents only.
+- Main agent should NEVER use skills - skills are for subagents only.
 
-Main agent MUST delegate to relevant subagents for information instead of directly reading files into context. The only exception is reading files required to write an edit (after subagent returns plan). If no suitable subagent exists, use AskUserQuestion to confirm proceeding directly.
+- Main agent MUST delegate to relevant subagents for information instead of WebSearches and WebFetches or directly reading files into context. 
+
+- The only exception is reading files required to write an edit (after subagent returns implementation plan). If no suitable subagent exists, you MUST use AskUserQuestion to confirm proceeding without following this rule.
 
 ## Project Rules
 
@@ -16,7 +22,7 @@ Main agent MUST delegate to relevant subagents for information instead of direct
 
 ## Git
 
-- Branches: feat/, chore/, fix/, refactor/, exp/, docs/, quick/ 
+- Branches: feat/, chore/, fix/, refactor/, exp/, docs/, quick/
 - Commits: Extremely concise, sacrifice grammar for concision
 
 ## Human Checkpoints

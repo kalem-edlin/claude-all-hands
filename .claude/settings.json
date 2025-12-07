@@ -29,6 +29,14 @@
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/capture-queries.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/enforce_planning.py"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -46,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/webfetch_to_tavily.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/enforce_research_fetch.py"
           }
         ]
       },
@@ -55,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/websearch_to_tavily.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/enforce_research_search.py"
           }
         ]
       },
@@ -85,15 +93,6 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/validate_skill.py"
-          }
-        ]
-      },
-      {
-        "matcher": "ExitPlanMode",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/on_exit_plan_mode.py"
           }
         ]
       }

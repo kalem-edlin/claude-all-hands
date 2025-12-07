@@ -16,8 +16,14 @@ if [ -n "$branch" ]; then
         plan_id=$(echo "$branch" | sed 's/[^a-zA-Z0-9_-]/-/g')
         plan_file=".claude/plans/$plan_id/plan.md"
 
+        # Reset deactivated status on new session
+        if [ "$status" = "deactivated" ]; then
+            "$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" plans set-status draft > /dev/null 2>&1
+            status="draft"
+        fi
+
         if [ "$status" = "draft" ]; then
-            echo "Plan status: draft (completed plan required before implementation)"
+            echo "Plan status: draft (planning required)"
             echo "Plan file: $plan_file"
         elif [ "$status" = "active" ]; then
             echo "Plan status: active (implementing)"

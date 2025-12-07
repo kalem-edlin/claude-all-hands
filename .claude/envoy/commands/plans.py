@@ -101,17 +101,22 @@ class PlansCaptureCommand(BaseCommand):
                 prompt = input_data.get("prompt", "")
                 cwd = input_data.get("cwd", ".")
             except (json.JSONDecodeError, EOFError):
-                return self.error("invalid_input", "No prompt provided and stdin empty")
+                return self.success({})
         else:
             cwd = "."
 
         # Skip capture on direct mode branches
         branch = get_branch()
         if is_direct_mode_branch(branch):
-            return self.success({
-                "captured": False,
-                "reason": f"direct mode branch ({branch})",
-            })
+            return self.success({})
+
+        # Skip capture if plan is active or deactivated (only track during draft)
+        plan_file = get_plan_dir(cwd) / "plan.md"
+        if plan_file.exists():
+            frontmatter = parse_frontmatter(plan_file.read_text())
+            status = frontmatter.get("status", "draft")
+            if status in ("active", "deactivated"):
+                return self.success({})
 
         if not prompt:
             return self.success({"captured": False, "reason": "empty prompt"})
@@ -132,11 +137,7 @@ class PlansCaptureCommand(BaseCommand):
                 for fp in file_refs:
                     f.write(json.dumps({"path": fp}) + "\n")
 
-        return self.success({
-            "captured": True,
-            "plan_dir": str(plan_dir),
-            "files_referenced": file_refs,
-        })
+        return self.success({})
 
     def _extract_file_refs(self, prompt: str, cwd: str) -> list[str]:
         """Extract file paths mentioned in prompt that actually exist."""
@@ -321,10 +322,10 @@ class PlansSetStatusCommand(BaseCommand):
     """Update plan frontmatter status."""
 
     name = "set-status"
-    description = "Set plan status (draft|active)"
+    description = "Set plan status (draft|active|deactivated)"
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("status", choices=["draft", "active"])
+        parser.add_argument("status", choices=["draft", "active", "deactivated"])
 
     def execute(self, *, status: str, **kwargs) -> dict:
         branch = get_branch()
@@ -382,6 +383,35 @@ class PlansFrontmatterCommand(BaseCommand):
         })
 
 
+class PlansClearQueriesCommand(BaseCommand):
+    """Clear captured queries for current branch."""
+
+    name = "clear-queries"
+    description = "Clear captured queries (called when plan activated)"
+
+    def add_arguments(self, parser) -> None:
+        pass
+
+    def execute(self, **kwargs) -> dict:
+        branch = get_branch()
+        if is_direct_mode_branch(branch):
+            return self.success({})
+
+        plan_dir = get_plan_dir()
+        queries_file = plan_dir / "queries.jsonl"
+        files_file = plan_dir / "files.jsonl"
+
+        cleared = []
+        if queries_file.exists():
+            queries_file.unlink()
+            cleared.append("queries.jsonl")
+        if files_file.exists():
+            files_file.unlink()
+            cleared.append("files.jsonl")
+
+        return self.success({"cleared": cleared})
+
+
 COMMANDS = {
     "capture": PlansCaptureCommand,
     "cleanup": PlansCleanupCommand,
@@ -389,4 +419,5 @@ COMMANDS = {
     "create": PlansCreateCommand,
     "set-status": PlansSetStatusCommand,
     "frontmatter": PlansFrontmatterCommand,
+    "clear-queries": PlansClearQueriesCommand,
 }
