@@ -1,0 +1,4 @@
+.env
+.claude/envoy/.venv/
+.claude/plans/** */
+node_modules/
