@@ -90,7 +90,7 @@ When main agent asks to create slash commands, use the **command-development** s
 - Command locations and file format
 - YAML frontmatter fields
 - Dynamic arguments ($ARGUMENTS, $1, $2)
-- File references (@) and bash execution (!`)
+- File references (@) and bash execution (exclamation-backtick syntax)
 
 ## Hook Development
 
