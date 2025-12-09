@@ -156,7 +156,7 @@ class SpawnCommand(BaseCommand):
                 "You may use Task tool for subagents if needed.\n\n"
                 f"{task}"
             )
-            cmd.append(worker_prompt)
+            cmd.extend(["-p", worker_prompt])
 
             # Set worker depth env var to prevent nesting and block planning
             worker_env = os.environ.copy()
