@@ -23,74 +23,132 @@ Spawns multiple subagents (explorer, curator, researcher) simultaneously within 
 
 ---
 
-## Mode 2: Worktree Workers (`envoy parallel`)
+## Mode 2: Worktree Workers (`parallel-worker` agent)
 
-**Use for**: Write-capable parallel implementation, side fixes, long-running tasks
+**Use for**: Write-capable parallel implementation, isolated task execution
+
+### Architecture
+
+Main agent spawns `parallel-worker` agent(s) as background Tasks. Each worker:
+1. Receives isolated tasks (sequential, no external dependencies)
+2. Converts tasks to mini-plan markdown
+3. Spawns worktree subprocess via `envoy parallel spawn --wait --plan`
+4. Blocks until subprocess completes
+5. Updates main plan file with results
+6. Returns to main agent
+
+```
+Main Agent
+    │
+    └─► Task(parallel-worker, run_in_background=true)
+            │
+            └─► envoy parallel spawn --wait --plan "<mini-plan>" --branch X
+                    │
+                    └─► (blocks until Claude subprocess completes)
+            │
+            ├─► Updates main plan file
+            └─► Returns {status, branch, summary}
+```
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
-| `envoy parallel spawn --branch X --task "Y" [--from Z]` | Create worktree + headless session |
+| `envoy parallel spawn --branch X --task "Y" --plan "Z" [--from B]` | Create worktree + inject plan + run synchronous Claude |
 | `envoy parallel status` | List workers and status |
-| `envoy parallel results [--worker X] [--tail N]` | Get worker output |
+| `envoy parallel results [--worker X] [--tail N]` | Get worker output (debugging) |
 | `envoy parallel cleanup [--worker X] [--all] [--force]` | Remove worktrees |
 
-### Environment Variables
+### Spawn Flags
 
-Configure in `.claude/settings.json` under `env`:
+| Flag | Description |
+|------|-------------|
+| `--branch` | Branch name for worktree |
+| `--task` | Task description/prompt for Claude |
+| `--plan` | Mini-plan markdown to inject into worktree |
+| `--from` | Base branch (default: HEAD) |
+| `--wait` | Block until completion (default: true) |
+| `--tools` | Comma-separated allowed tools |
+
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PARALLEL_MAX_WORKERS` | `3` | Max concurrent workers |
-| `PARALLEL_WORKER_PREFIX` | `claude-worker-` | Worktree directory prefix |
+| `PARALLEL_WORKER_DEPTH` | (unset) | Set to `1` in subprocesses to block nesting |
+
+### Worktree Location
+
+Workers created in `.trees/<branch-name>/` (gitignored).
+
+### Mini-Plan Format
+
+```markdown
+# Worker Tasks
+
+- [ ] Task 1 description
+- [ ] Task 2 description
+
+Complete each task sequentially. Commit after each logical change.
+```
+
+### Plan File Updates
+
+Workers update main plan at `.claude/plans/<parent-branch>/plan.md`:
+
+```markdown
+## Worker Branches
+- `worker/<name>`: Summary of completed work
+
+## Steps
+- [x] Task description (branch: worker/<name>)
+```
+
+### PARALLEL_WORKER_DEPTH Effects
+
+When `PARALLEL_WORKER_DEPTH > 0` (in subprocess):
+- `/plan` command disabled
+- Planning suggestions suppressed
+- Subprocess uses injected mini-plan only
+- Nested `envoy parallel spawn` blocked
 
 ### Workflows
 
-**Side-fix pattern** (fix unrelated issue while on feature branch):
-```bash
-# From feature branch, spawn quick fix on main
-envoy parallel spawn --branch quick/hook-fix --from main --task "Fix hook validation in .claude/hooks/scripts/validate_skill.py"
-
-# Continue feature work...
-
-# Check status
-envoy parallel status
-
-# Get results when done
-envoy parallel results --worker quick-hook-fix
-
-# Cleanup
-envoy parallel cleanup --worker quick-hook-fix
+**Via parallel-worker agent** (recommended):
+```
+Main agent:
+1. Identifies isolated tasks from plan
+2. Spawns: Task(parallel-worker, run_in_background=true)
+   - tasks: ["task1", "task2"]
+   - feature: "my-feature"
+3. Continues main thread work
+4. Checks AgentOutputTool when ready
+5. Merges worker branches, runs /plan-checkpoint
 ```
 
-**Parallel feature streams**:
+**Manual spawn** (debugging):
 ```bash
-# Spawn multiple workers from same base
-envoy parallel spawn --branch feat/api-endpoints --task "Implement REST endpoints per spec"
-envoy parallel spawn --branch feat/db-models --task "Create database models per spec"
-envoy parallel spawn --branch feat/frontend --task "Build React components per spec"
-
-# Monitor all
-envoy parallel status
-
-# Get all results
-envoy parallel results
+envoy parallel spawn \
+  --branch "worker/my-task" \
+  --task "Implement X" \
+  --plan "# Tasks\n- [ ] Do X\n- [ ] Test X" \
+  --from main
 ```
 
 ### Important Notes
 
-1. **`.env` copied automatically** - Workers get copy of parent's `.env`
-2. **Workers detached** - Continue working while workers run
-3. **Cleanup removes branch** - `cleanup` deletes worktree AND branch
-4. **Force for uncommitted** - Use `--force` if worker has uncommitted changes
+1. **Synchronous by default** - `spawn` blocks until subprocess completes
+2. **No orphaned processes** - Closing main Claude kills workers
+3. **`.env` copied automatically** - Workers get parent's API keys
+4. **STDOUT shielded** - Heartbeats only during execution, full log to `.claude-worker.log`
+5. **Cleanup removes branch** - `cleanup` deletes worktree AND branch
 
 ---
 
 ## Anti-Patterns
 
 - **Worktrees for read-only** - Use `/parallel-discovery` instead
-- **Specialists without skills** - All agents same model, skills differentiate
-- **Verbose subagent output** - Defeats context preservation
-- **Direct agent communication** - Use coordinator (main agent aggregates)
-- **Parallel for simple tasks** - Only valuable when multi-perspective needed
+- **Nested workers** - Blocked by `PARALLEL_WORKER_DEPTH`
+- **Fire-and-forget** - Workers always synchronous now
+- **Manual polling** - Use `parallel-worker` agent instead
+- **Parallel for simple tasks** - Only valuable for isolated task chains

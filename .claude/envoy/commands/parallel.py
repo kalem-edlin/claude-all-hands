@@ -1,4 +1,4 @@
-"""Parallel worker management via git worktrees and headless Claude sessions."""
+"""Parallel worker management via git worktrees and synchronous Claude sessions."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import json
 import os
 import shutil
 import subprocess
+import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +15,7 @@ from .base import BaseCommand
 
 # Configurable via settings.json env block (defaults below)
 PARALLEL_MAX_WORKERS = int(os.environ.get("PARALLEL_MAX_WORKERS", "3"))
-PARALLEL_WORKER_PREFIX = os.environ.get("PARALLEL_WORKER_PREFIX", "claude-worker-")
+HEARTBEAT_INTERVAL = 30  # seconds between heartbeat emissions
 
 
 def get_project_root() -> Path:
@@ -29,13 +31,15 @@ def get_project_root() -> Path:
 
 
 def get_workers_dir() -> Path:
-    """Get parent directory for worktrees (sibling to project)."""
-    return get_project_root().parent
+    """Get .trees/ directory for worktrees (inside project, gitignored)."""
+    trees_dir = get_project_root() / ".trees"
+    trees_dir.mkdir(exist_ok=True)
+    return trees_dir
 
 
 def get_worker_path(worker_name: str) -> Path:
     """Get path for a specific worker worktree."""
-    return get_workers_dir() / f"{PARALLEL_WORKER_PREFIX}{worker_name}"
+    return get_workers_dir() / worker_name
 
 
 def sanitize_branch_name(name: str) -> str:
@@ -59,15 +63,26 @@ def sanitize_branch_name(name: str) -> str:
 
 class SpawnCommand(BaseCommand):
     name = "spawn"
-    description = "Create worktree + copy .env + launch headless Claude session"
+    description = "Create worktree + inject plan + run synchronous Claude session"
 
     def add_arguments(self, parser) -> None:
-        parser.add_argument("--branch", required=True, help="Branch name for worker (auto-prefixed if needed)")
+        parser.add_argument("--branch", required=True, help="Branch name for worker")
         parser.add_argument("--task", required=True, help="Task description for the worker")
         parser.add_argument("--from", dest="from_branch", default="HEAD", help="Base branch (default: HEAD)")
+        parser.add_argument("--plan", help="Mini-plan markdown to inject into worktree")
+        parser.add_argument("--wait", action="store_true", default=True, help="Block until completion (default: true)")
         parser.add_argument("--tools", help="Comma-separated allowed tools (default: all tools)")
 
-    def execute(self, branch: str, task: str, from_branch: str = "HEAD", tools: Optional[str] = None, **kwargs) -> dict:
+    def execute(
+        self,
+        branch: str,
+        task: str,
+        from_branch: str = "HEAD",
+        plan: Optional[str] = None,
+        wait: bool = True,
+        tools: Optional[str] = None,
+        **kwargs,
+    ) -> dict:
         # Check for nested worker prevention
         if os.environ.get("PARALLEL_WORKER_DEPTH"):
             return self.error(
@@ -112,52 +127,101 @@ class SpawnCommand(BaseCommand):
             if env_file.exists():
                 shutil.copy(env_file, worker_path / ".env")
 
-            # Launch headless Claude session in background
+            # Create plan file if --plan provided
+            if plan:
+                plan_dir = worker_path / ".claude" / "plans" / worker_name
+                plan_dir.mkdir(parents=True, exist_ok=True)
+                plan_file = plan_dir / "plan.md"
+                plan_content = f"---\nstatus: active\nbranch: {branch}\n---\n\n{plan}"
+                plan_file.write_text(plan_content)
+
+            # Build Claude command
+            cmd = ["claude", "--print"]
+            if tools:
+                cmd.extend(["--allowedTools", tools])
+
+            # Prepend anti-nesting directive to task
+            worker_prompt = (
+                "IMPORTANT: Do not use `envoy parallel spawn` - nested workers are not allowed. "
+                "You may use Task tool for subagents if needed.\n\n"
+                f"{task}"
+            )
+            cmd.append(worker_prompt)
+
+            # Set worker depth env var to prevent nesting and block planning
+            worker_env = os.environ.copy()
+            worker_env["PARALLEL_WORKER_DEPTH"] = "1"
+
+            # Log file for debugging (full output)
             log_file = worker_path / ".claude-worker.log"
-            with open(log_file, "w") as log:
-                # Build command - no tool restrictions by default
-                cmd = ["claude", "--print"]
-                if tools:
-                    cmd.extend(["--allowedTools", tools])
 
-                # Prepend anti-nesting directive to task
-                worker_prompt = (
-                    "IMPORTANT: Do not use `envoy parallel spawn` - nested workers are not allowed. "
-                    "You may use Task tool for subagents if needed.\n\n"
-                    f"{task}"
-                )
-                cmd.append(worker_prompt)
-
-                # Set worker depth env var to prevent nesting
-                worker_env = os.environ.copy()
-                worker_env["PARALLEL_WORKER_DEPTH"] = "1"
-
-                process = subprocess.Popen(
-                    cmd,
-                    cwd=str(worker_path),
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                    start_new_session=True,  # Detach from parent
-                    env=worker_env,
-                )
-
-            # Save worker metadata
+            # Save worker metadata before running
             metadata = {
                 "branch": branch,
                 "task": task,
                 "from_branch": from_branch,
-                "pid": process.pid,
                 "worker_path": str(worker_path),
+                "started_at": time.time(),
             }
             with open(worker_path / ".claude-worker-meta.json", "w") as f:
                 json.dump(metadata, f, indent=2)
+
+            # Run synchronously - block until completion
+            # Emit heartbeats to caller while waiting, write full log to file
+            with open(log_file, "w") as log:
+                process = subprocess.Popen(
+                    cmd,
+                    cwd=str(worker_path),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    env=worker_env,
+                )
+
+                last_heartbeat = time.time()
+                output_lines = []
+
+                # Stream output: write to log, emit heartbeats to caller
+                while True:
+                    line = process.stdout.readline()
+                    if not line and process.poll() is not None:
+                        break
+
+                    if line:
+                        # Write full output to log file
+                        log.write(line)
+                        log.flush()
+                        output_lines.append(line)
+
+                        # Emit heartbeat every HEARTBEAT_INTERVAL seconds
+                        now = time.time()
+                        if now - last_heartbeat >= HEARTBEAT_INTERVAL:
+                            # Heartbeat to stderr so it doesn't pollute JSON output
+                            print(f"[heartbeat] {worker_name} - {len(output_lines)} lines", file=sys.stderr)
+                            last_heartbeat = now
+
+                exit_code = process.returncode
+
+            # Update metadata with completion info
+            metadata["completed_at"] = time.time()
+            metadata["exit_code"] = exit_code
+            metadata["output_lines"] = len(output_lines)
+            with open(worker_path / ".claude-worker-meta.json", "w") as f:
+                json.dump(metadata, f, indent=2)
+
+            # Extract final summary (last non-empty lines)
+            summary_lines = [l.strip() for l in output_lines[-10:] if l.strip()]
+            summary = "\n".join(summary_lines[-3:]) if summary_lines else "(no output)"
 
             return self.success({
                 "worker": worker_name,
                 "branch": branch,
                 "path": str(worker_path),
-                "pid": process.pid,
-                "task": task,
+                "exit_code": exit_code,
+                "status": "success" if exit_code == 0 else "failed",
+                "summary": summary,
+                "log_path": str(log_file),
+                "output_lines": len(output_lines),
             })
 
         except Exception as e:
@@ -169,10 +233,12 @@ class SpawnCommand(BaseCommand):
     def _list_workers(self) -> list[str]:
         """List existing worker names."""
         workers_dir = get_workers_dir()
+        if not workers_dir.exists():
+            return []
         return [
-            d.name.replace(PARALLEL_WORKER_PREFIX, "")
+            d.name
             for d in workers_dir.iterdir()
-            if d.is_dir() and d.name.startswith(PARALLEL_WORKER_PREFIX)
+            if d.is_dir() and (d / ".claude-worker-meta.json").exists()
         ]
 
 
@@ -187,12 +253,15 @@ class StatusCommand(BaseCommand):
         workers_dir = get_workers_dir()
         workers = []
 
+        if not workers_dir.exists():
+            return self.success({"workers": [], "count": 0, "max_workers": PARALLEL_MAX_WORKERS})
+
         for d in workers_dir.iterdir():
-            if not d.is_dir() or not d.name.startswith(PARALLEL_WORKER_PREFIX):
+            meta_file = d / ".claude-worker-meta.json"
+            if not d.is_dir() or not meta_file.exists():
                 continue
 
-            worker_name = d.name.replace(PARALLEL_WORKER_PREFIX, "")
-            meta_file = d / ".claude-worker-meta.json"
+            worker_name = d.name
             log_file = d / ".claude-worker.log"
 
             worker_info = {
@@ -202,23 +271,22 @@ class StatusCommand(BaseCommand):
             }
 
             # Load metadata
-            if meta_file.exists():
-                with open(meta_file) as f:
-                    meta = json.load(f)
-                    worker_info.update({
-                        "branch": meta.get("branch"),
-                        "task": meta.get("task"),
-                        "pid": meta.get("pid"),
-                    })
+            with open(meta_file) as f:
+                meta = json.load(f)
+                worker_info.update({
+                    "branch": meta.get("branch"),
+                    "task": meta.get("task"),
+                    "pid": meta.get("pid"),
+                })
 
-                # Check if process still running
-                pid = meta.get("pid")
-                if pid:
-                    try:
-                        os.kill(pid, 0)  # Check if process exists
-                        worker_info["status"] = "running"
-                    except OSError:
-                        worker_info["status"] = "completed"
+            # Check if process still running
+            pid = meta.get("pid")
+            if pid:
+                try:
+                    os.kill(pid, 0)  # Check if process exists
+                    worker_info["status"] = "running"
+                except OSError:
+                    worker_info["status"] = "completed"
 
             # Get log tail
             if log_file.exists():
@@ -248,24 +316,28 @@ class ResultsCommand(BaseCommand):
         workers_dir = get_workers_dir()
         results = []
 
+        if not workers_dir.exists():
+            if worker:
+                return self.error("not_found", f"Worker '{worker}' not found")
+            return self.success({"results": []})
+
         for d in workers_dir.iterdir():
-            if not d.is_dir() or not d.name.startswith(PARALLEL_WORKER_PREFIX):
+            meta_file = d / ".claude-worker-meta.json"
+            if not d.is_dir() or not meta_file.exists():
                 continue
 
-            worker_name = d.name.replace(PARALLEL_WORKER_PREFIX, "")
+            worker_name = d.name
             if worker and worker_name != worker:
                 continue
 
             log_file = d / ".claude-worker.log"
-            meta_file = d / ".claude-worker-meta.json"
 
             result = {"name": worker_name, "path": str(d)}
 
-            if meta_file.exists():
-                with open(meta_file) as f:
-                    meta = json.load(f)
-                    result["task"] = meta.get("task")
-                    result["branch"] = meta.get("branch")
+            with open(meta_file) as f:
+                meta = json.load(f)
+                result["task"] = meta.get("task")
+                result["branch"] = meta.get("branch")
 
             if log_file.exists():
                 with open(log_file) as f:
@@ -298,29 +370,30 @@ class CleanupCommand(BaseCommand):
         skipped = []
         errors = []
 
+        if not workers_dir.exists():
+            return self.success({"removed": [], "skipped": [], "errors": []})
+
         for d in workers_dir.iterdir():
-            if not d.is_dir() or not d.name.startswith(PARALLEL_WORKER_PREFIX):
+            meta_file = d / ".claude-worker-meta.json"
+            if not d.is_dir() or not meta_file.exists():
                 continue
 
-            worker_name = d.name.replace(PARALLEL_WORKER_PREFIX, "")
+            worker_name = d.name
             if worker and worker_name != worker:
                 continue
-
-            meta_file = d / ".claude-worker-meta.json"
 
             # Check if running
             is_running = False
             pid = None
-            if meta_file.exists():
-                with open(meta_file) as f:
-                    meta = json.load(f)
-                    pid = meta.get("pid")
-                    if pid:
-                        try:
-                            os.kill(pid, 0)
-                            is_running = True
-                        except OSError:
-                            pass
+            with open(meta_file) as f:
+                meta = json.load(f)
+                pid = meta.get("pid")
+                if pid:
+                    try:
+                        os.kill(pid, 0)
+                        is_running = True
+                    except OSError:
+                        pass
 
             # Skip running workers unless --all
             if is_running and not remove_all:
@@ -335,10 +408,7 @@ class CleanupCommand(BaseCommand):
                     pass
 
             # Get branch name for cleanup
-            branch_name = None
-            if meta_file.exists():
-                with open(meta_file) as f:
-                    branch_name = json.load(f).get("branch")
+            branch_name = meta.get("branch")
 
             # Remove worktree
             cmd = ["git", "worktree", "remove", str(d)]
