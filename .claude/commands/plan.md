@@ -34,10 +34,15 @@ Run: `.claude/envoy/envoy plans frontmatter`
 
 Check agent descriptions for relevant specialists (exclude researcher/planner).
 
-- **Specialists found**: Dispatch in parallel, query: "What repo context/patterns relevant to: {prompt}?"
+- **Specialists found**: Use `/parallel-discovery` to dispatch specialists + explorer simultaneously
+  - Query specialists: "What repo context/patterns relevant to: {prompt}?"
+  - Query explorer: "What code structure/implementation relevant to: {prompt}?"
 - **None found**: Use **AskUserQuestion**:
   - Question: "No specialist for this domain. How to proceed?"
-  - Options: ["Create specialist", "Proceed without", "Cancel"]
+  - Options: ["Spawn worker to create specialist", "Proceed without specialist", "Cancel"]
+  - On "Spawn worker to create specialist" → Run `/curation-fix Create specialist agent for {domain} using specialist-builder skill`, then continue to Step 3
+  - On "Proceed without specialist" → Continue to Step 3
+  - On "Cancel" → End workflow
 
 ## Step 3: Delegate to Planner
 
@@ -54,7 +59,7 @@ Planner returns with status:
 - **plan_ready**: Use AskUserQuestion:
   - Question: "Plan ready. Approve to begin implementation?"
   - Options: ["Approve", "Needs changes"]
-  - On "Approve" → Read `.claude/plans/<branch>/plan.md`, begin implementation
+  - On "Approve" → Read `.claude/plans/<branch>/plan.md`, then run `/parallel-orchestration` to check for parallel work streams
   - On "Needs changes" → User provides feedback via Other, re-delegate to planner with feedback
 
 - **Planning declined** → Proceed with user's original request without planning
