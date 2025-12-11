@@ -32,17 +32,15 @@ Run: `.claude/envoy/envoy plans frontmatter`
 
 ## Step 2: Gather Specialist Context
 
-Check agent descriptions for relevant specialists (exclude researcher/planner).
+Check agent descriptions for relevant specialists (exclude researcher/planner/explorer).
 
 - **Specialists found**: Use `/parallel-discovery` to dispatch specialists + explorer simultaneously
   - Query specialists: "What repo context/patterns relevant to: {prompt}?"
   - Query explorer: "What code structure/implementation relevant to: {prompt}?"
-- **None found**: Use **AskUserQuestion**:
-  - Question: "No specialist for this domain. How to proceed?"
-  - Options: ["Spawn worker to create specialist", "Proceed without specialist", "Cancel"]
-  - On "Spawn worker to create specialist" → Run `/curation-fix Create specialist agent for {domain} using specialist-builder skill`, then continue to Step 3
-  - On "Proceed without specialist" → Continue to Step 3
-  - On "Cancel" → End workflow
+- **None found**: Dispatch **explorer** agent to analyze relevant directories:
+  - Query: "Analyze codebase patterns relevant to: {prompt}"
+  - Explorer uses repomix-extraction to gather context
+  - Returns patterns/conventions for planner to incorporate
 
 ## Step 3: Delegate to Planner
 

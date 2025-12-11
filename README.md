@@ -1,66 +1,94 @@
 # Claude Agent Orchestration System
 
-Opinionated Claude Code workflow configuration. Self-sufficient in tracking best practices. Plug-and-play for any repository.
+Opinionated Claude Code workflow configuration with bidirectional sync. Plug-and-play for any repository.
 
-## Purpose
-
-Enforces structured agent orchestration:
-- Main agent: sole code modifier
-- Subagents: read-only research/planning
-- Automatic planning workflow for feature branches
-- Direct mode for `main`, `master`, `staging`, `production`, `quick/*`
-
-## Installation
+## Quick Start
 
 ```bash
-# Clone into your project's .claude directory
-git clone https://github.com/youruser/claude-agents.git .claude
+# From source repo, initialize in target
+./scripts/allhands.sh init /path/to/target-repo
 
-# Or copy specific components
-cp -r claude-agents/.claude/agents .claude/
-cp -r claude-agents/.claude/skills .claude/
-cp -r claude-agents/.claude/hooks .claude/
+# In target repo, pull updates
+ALLHANDS_PATH=/path/to/source ./scripts/allhands.sh update
 ```
 
 ## Architecture
 
+**Main agent**: sole code modifier, delegates ALL reads to subagents
+**Subagents**: read-only specialists returning findings
+
 ```
 .claude/
-├── agents/           # Subagent definitions (planner, curator, researcher)
-├── skills/           # Knowledge skills for subagents
-├── hooks/            # Lifecycle hooks (planning workflow, validation)
-├── commands/         # Slash commands (/plan, /plan-checkpoint)
-├── envoy/            # External tool integrations (replaces MCP)
-└── plans/            # Auto-generated plan files per branch
+├── agents/       # planner, curator, researcher, parallel-worker
+├── skills/       # 10+ knowledge modules
+├── commands/     # /plan, /parallel-discovery, /plan-checkpoint
+├── hooks/        # SessionStart, PreToolUse, PostToolUse automation
+├── envoy/        # External tools (tavily, perplexity, vertex, parallel)
+└── plans/        # Per-branch planning artifacts
 ```
 
-## Key Components
+## Agents
 
-### Agents
-- **planner**: Spec-driven planning, creates implementation plans
-- **curator**: Claude Code expert, manages .claude/ configurations
-- **researcher**: Web search, documentation analysis
+| Agent | Role |
+|-------|------|
+| **planner** | Spec-driven planning, checkpoint workflow |
+| **curator** | .claude/ infrastructure, Claude Code expert |
+| **researcher** | Web search (sole agent with access) |
+| **parallel-worker** | Worktree subprocess coordinator |
 
-### Skills
-- **claude-code-patterns**: Best practice URLs for Claude Code features
-- **orchestration-idols**: Patterns from production agent systems
-- **skill-builder**: Templates for creating new skills
+## Skills
 
-### Hooks
-- Planning workflow triggers on feature branches
-- Validation before commits
-- Automatic plan file management
+| Skill | Purpose |
+|-------|---------|
+| **research-tools** | Web search, deep research, X/Twitter |
+| **git-ops** | Commits, PRs, branch management |
+| **claude-code-patterns** | Best practice documentation |
+| **skill-development** | Creating new skills |
+| **specialist-builder** | Creating new agents |
+| **hook-development** | Creating hooks |
+| **claude-envoy-usage** | Using envoy integrations |
+| **orchestration-idols** | Production agent patterns |
 
-## Usage
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/plan` | Begin planning workflow |
+| `/plan-checkpoint` | Validate implementation against plan |
+| `/parallel-discovery` | Run multiple subagents simultaneously |
+| `/parallel-orchestration` | Spawn worktree workers for parallel tasks |
+
+## Envoy (External Tools)
 
 ```bash
-# Start planning workflow (auto-triggers on feature branches)
-/plan
-
-# Review implementation against plan
-/plan-checkpoint
+envoy tavily search "query"       # Web search
+envoy perplexity research "q"     # Deep research + citations
+envoy vertex validate             # Plan validation
+envoy vertex review               # Code review
+envoy parallel spawn --branch X   # Worktree worker
 ```
+
+## Planning Workflow
+
+**Plan mode** (feature branches): Auto-creates plan, requires `/plan` → implement → `/plan-checkpoint`
+
+**Direct mode** (main, master, quick/*): Immediate implementation
+
+## AllHands Distribution
+
+Bidirectional sync for distributing framework across repos.
+
+| Command | Description |
+|---------|-------------|
+| `allhands init <target>` | Initialize framework in target |
+| `allhands update` | Pull latest from source |
+| `allhands sync-back` | Sync improvements back as PR |
+
+See `docs/allhands.md` for details.
 
 ## Configuration
 
-See `CLAUDE.md` for project rules and agent behavior configuration.
+- `CLAUDE.md` - Framework instructions (distributed)
+- `CLAUDE.project.md` - Project-specific instructions (local)
+- `.claude/settings.json` - Hooks, permissions, env vars
+- `.claude/settings.local.json` - Local overrides (not distributed)

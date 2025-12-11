@@ -6,7 +6,7 @@ description: |
   <example>
   user: "Extend claude-envoy for a new external use case | Create a skill for [X] | Update CLAUDE.md | How do I create a hook? | Add a specialist agent for [X]"
   </example>
-skills: claude-code-patterns, skill-development, specialist-builder, command-development, hook-development, research-tools, claude-envoy-curation, claude-envoy-usage, orchestration-idols
+skills: claude-code-patterns, skill-development, specialist-builder, command-development, hook-development, research-tools, claude-envoy-curation, claude-envoy-usage, orchestration-idols, repomix-extraction
 allowed-tools: Read, Glob, Grep, Bash
 model: inherit
 color: cyan
@@ -112,8 +112,17 @@ Our hook system uses a mixture of Shell scripts and Python scripts. And heavily 
 
 ## Envoy curation
 
-Envoy is a tool that allows you to use external tools in your Claude Code projects. It is a replacement for the MCP server. It is a self-documenting tool (by using help commands) that you can use to discover available commands and their usage. 
+Envoy is a tool that allows you to use external tools in your Claude Code projects. It is a replacement for the MCP server. It is a self-documenting tool (by using help commands) that you can use to discover available commands and their usage.
 
 - This is foundational to our agentic workflow and you must maintain it and stay up to date on the latest features and best practices.
 - Use the **claude-envoy-curation** skill to add new commands to envoy.
 - Use the **claude-envoy-usage** skill for examples of its usage when curating any agentic use cases for it!
+
+## AllHands Sync
+
+`.allhandsignore` excludes project-specific files from sync-back.
+
+| Sync back (framework) | Ignore (project-specific) |
+|-----------------------|---------------------------|
+| Bug fixes, new reusable patterns | Custom agents/skills |
+| Doc/hook/envoy improvements | Local configs |

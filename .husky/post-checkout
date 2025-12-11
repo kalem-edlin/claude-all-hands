@@ -1,2 +1,5 @@
 #!/bin/sh
 . "$(dirname "$0")/claude/setup-plan.sh" "$@"
+
+# Project-specific post-checkout
+[ -f "$(dirname "$0")/project/post-checkout" ] && . "$(dirname "$0")/project/post-checkout" "$@"

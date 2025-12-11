@@ -55,11 +55,14 @@ This file MUST only be edited via curator agent consultation. Changes require cu
 
 ## Parallel Execution
 
-**Discovery (read-only, in-session):**
-`/parallel-discovery <task>` - runs multiple subagents simultaneously
+**Mode 1: `/parallel-discovery`** (read-only, in-session)
+- Spawns multiple subagents simultaneously
+- Use for: planning research, multi-perspective analysis
 
-**Implementation (write-capable, cross-session):**
-@.claude/docs/parallel-orchestration.md
+**Mode 2: `parallel-worker` agent** (write-capable, cross-session)
+- Spawns worktree subprocess via `envoy parallel spawn`
+- Use for: isolated implementation tasks that can run in parallel
+- Commands: `envoy parallel spawn/status/results/cleanup`
 
 ## claude-envoy Usage
 
@@ -68,3 +71,7 @@ This file MUST only be edited via curator agent consultation. Changes require cu
 When any subagent reports an `envoy` command failure:
 1. Use AskUserQuestion: "[Tool] failed: [error]. Options: (A) Retry, (B) [use your best inferred alternative], (C) Skip"
 2. In auto-accept mode: Infer best alternative and proceed
+
+## Project-Specific Instructions
+
+@CLAUDE.project.md
