@@ -5,13 +5,33 @@ This hook runs ONLY in the claude-all-hands source repo (not distributed).
 Warns on commit if files exist that aren't covered by distribute or internal patterns.
 """
 
+import fnmatch
 import json
 import sys
 from pathlib import Path
 
-# Add scripts dir to path for allhands module import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from allhands.manifest import is_ignored  # noqa: E402
+
+def is_covered(path: str, patterns: list) -> bool:
+    """Check if path matches any pattern."""
+    for pattern in patterns:
+        if fnmatch.fnmatch(path, pattern):
+            return True
+        # Handle ** patterns
+        if "**" in pattern:
+            parts = pattern.split("**", 1)
+            if len(parts) == 2:
+                prefix, suffix = parts
+                prefix = prefix.rstrip("/")
+                suffix = suffix.lstrip("/")
+                if path.startswith(prefix) if prefix else True:
+                    remaining = path[len(prefix):].lstrip("/") if prefix else path
+                    if not suffix:
+                        return True
+                    if fnmatch.fnmatch(remaining, f"*{suffix}") or fnmatch.fnmatch(
+                        remaining, f"*/{suffix}"
+                    ):
+                        return True
+    return False
 
 
 def load_manifest(repo_root: Path) -> dict:
@@ -21,11 +41,6 @@ def load_manifest(repo_root: Path) -> dict:
         return {}
     with open(manifest_path) as f:
         return json.load(f)
-
-
-def is_covered(path: str, patterns: list) -> bool:
-    """Check if path is covered by any pattern (reuses is_ignored logic)."""
-    return is_ignored(path, patterns)
 
 
 def get_managed_files(repo_root: Path) -> list:
@@ -50,15 +65,19 @@ def get_managed_files(repo_root: Path) -> list:
             if f.is_file():
                 files.append(str(f.relative_to(repo_root)))
 
-    # Check scripts/ directory
-    scripts_dir = repo_root / "scripts"
-    if scripts_dir.exists():
-        for f in scripts_dir.rglob("*"):
+    # Check src/ directory
+    src_dir = repo_root / "src"
+    if src_dir.exists():
+        for f in src_dir.rglob("*"):
             if f.is_file():
-                rel = str(f.relative_to(repo_root))
-                if "__pycache__" in rel:
-                    continue
-                files.append(rel)
+                files.append(str(f.relative_to(repo_root)))
+
+    # Check bin/ directory
+    bin_dir = repo_root / "bin"
+    if bin_dir.exists():
+        for f in bin_dir.rglob("*"):
+            if f.is_file():
+                files.append(str(f.relative_to(repo_root)))
 
     # Check root-level files that might need coverage
     for f in repo_root.iterdir():

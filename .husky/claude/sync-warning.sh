@@ -7,16 +7,8 @@ if [ ! -f ".allhandsignore" ]; then
     exit 0
 fi
 
-# Get staged files in managed directories
-MANAGED_CHANGES=$(git diff --cached --name-only | grep -E '^(\.claude/|\.husky/|CLAUDE\.md)' || true)
-
-if [ -z "$MANAGED_CHANGES" ]; then
-    exit 0
-fi
-
-# Use Python CLI for reliable pattern matching (handles ** and spaces correctly)
-# shellcheck disable=SC2086
-SYNC_FILES=$(echo $MANAGED_CHANGES | xargs python3 -m allhands check-ignored 2>/dev/null || echo $MANAGED_CHANGES)
+# Use CLI to get actual files that differ from source (not just staged files)
+SYNC_FILES=$(npx claude-all-hands sync-back --list 2>/dev/null || true)
 
 if [ -z "$SYNC_FILES" ]; then
     exit 0

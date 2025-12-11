@@ -3,7 +3,7 @@
 
 # AllHands sync-back on protected branch merge
 if [ -n "$ALLHANDS_PATH" ]; then
-    "$ALLHANDS_PATH/scripts/allhands.sh" sync-back --auto 2>/dev/null || true
+    npx tsx "$ALLHANDS_PATH/src/cli.ts" sync-back --auto 2>/dev/null || true
 fi
 
 # Project-specific post-merge (TARGET repos)
