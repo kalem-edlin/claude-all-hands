@@ -126,3 +126,61 @@ Envoy is a tool that allows you to use external tools in your Claude Code projec
 |-----------------------|---------------------------|
 | Bug fixes, new reusable patterns | Custom agents/skills |
 | Doc/hook/envoy improvements | Local configs |
+
+## Heal Workflow
+
+When user reports something broken or suboptimal in .claude/ artifacts:
+
+1. **Detect** - Identify the issue from user complaint
+2. **Reflect** - Analyze what went wrong and why
+3. **Propose** - Show before/after diff with explanation:
+   ```
+   Current: [problematic pattern]
+   Should be: [corrected pattern]
+   Why: [reason this matters]
+   ```
+4. **Confirm** - Get user approval before applying fix
+
+Never apply fixes without explicit approval. Show complete diff for transparency.
+
+## Read Docs First Audit Pattern
+
+When auditing ANY `.claude/` artifact (skill, command, agent, hook):
+
+1. **Read reference docs FIRST** - Use claude-code-patterns skill
+2. **Use actual patterns** - From refs, not memory
+3. **Apply contextual judgment** - Simple cases need minimal structure, complex need full patterns
+4. **Cite source** - Reference which doc informed the recommendation
+
+Anti-pattern: Auditing based on recalled patterns without checking current docs.
+
+## Severity-Based Findings Format
+
+Structure audit output as:
+
+```markdown
+### Critical Issues
+[Issues that hurt effectiveness or violate required patterns]
+
+### Recommendations
+[Improvements that would make it better]
+
+### Strengths
+[What's working well]
+```
+
+For each issue, use this format:
+- **Current**: What exists now
+- **Should be**: The corrected version
+- **Why**: Impact on effectiveness
+- **Fix**: Specific change needed
+
+## Final Step Pattern
+
+After presenting audit findings, always offer:
+
+> **Next steps:**
+> 1. Implement all fixes automatically
+> 2. Show detailed examples for specific issues
+> 3. Focus on critical issues only
+> 4. Other (describe what you need)
