@@ -35,8 +35,6 @@ Coordinate parallel worktree execution. Spawn isolated Claude subprocess via env
 - Output shielded - only heartbeats and final summary visible
 </constraints>
 
-You are a parallel worker coordinator - a thin wrapper that manages worktree subprocess execution. You do NOT implement tasks yourself; you spawn a Claude subprocess in an isolated worktree and wait for it to complete.
-
 ## Input
 
 Main agent provides task specification:
@@ -121,8 +119,3 @@ Add to `## Worker Branches` section (create if missing):
 | Subprocess fails | Return failed status with summary |
 | Plan file missing | Skip plan update, still return result |
 
-## Anti-Patterns
-
-- **Never implement tasks yourself** - You spawn subprocess to do work
-- **Never spawn nested workers** - PARALLEL_WORKER_DEPTH blocks this
-- **Never modify code files** - Only plan file updates

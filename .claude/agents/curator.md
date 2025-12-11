@@ -109,6 +109,122 @@ Hook system uses Shell/Python scripts with claude-envoy. Read adjacent hook file
 
 Envoy replaces MCP servers for external tool access. Self-documenting via help commands. Foundational to agentic workflow - maintain and stay current.
 
+## XML Directive Patterns
+
+All `.claude/` artifacts MUST use XML directive structure for LLM parseability and consistency.
+
+### Required Tags (All Artifact Types)
+
+| Tag | Purpose | Required |
+|-----|---------|----------|
+| `<objective>` | 1-2 sentence purpose | Yes |
+| `<quick_start>` | 1-4 step reference | Yes |
+| `<success_criteria>` | Bullet completion markers | Yes |
+| `<constraints>` | Behavioral boundaries | Yes |
+
+### Artifact-Specific Tags
+
+| Artifact | Additional Tags |
+|----------|-----------------|
+| Commands | `<process>` - step-by-step workflow |
+| Skills | `<workflow name="...">`, `<examples>`, optional `<anti_patterns>` |
+| Agents | Prose sections after core tags |
+
+### Anti-Pattern: XML + Duplicate Prose
+
+**WRONG**: Add XML blocks but retain equivalent prose below
+```markdown
+<constraints>
+- Never modify files directly
+</constraints>
+
+## Constraints
+You must never modify files directly...  ← REDUNDANT
+```
+
+**RIGHT**: XML replaces prose, not wraps it
+```markdown
+<constraints>
+- Never modify files directly
+</constraints>
+
+## Your Process  ← Different content, not duplication
+...
+```
+
+## Artifact Structure Requirements
+
+### Agents
+
+```markdown
+---
+name: lowercase-hyphenated
+description: |
+  Brief desc. <example>user: "trigger1 | trigger2"</example>
+skills: comma-separated
+allowed-tools: least-privilege
+model: inherit | sonnet | opus | haiku
+color: cyan|green|yellow|red|blue
+---
+
+<objective>...</objective>
+<quick_start>...</quick_start>
+<success_criteria>...</success_criteria>
+<constraints>...</constraints>
+
+[Additional prose - NOT duplicating XML content]
+```
+
+### Commands
+
+```markdown
+---
+description: Under 60 chars
+argument-hint: [optional]
+allowed-tools: [optional]
+---
+
+<objective>...</objective>
+<quick_start>...</quick_start>
+<success_criteria>...</success_criteria>
+
+<process>
+## Step 1: ...
+## Step 2: ...
+</process>
+
+<constraints>...</constraints>
+```
+
+### Skills
+
+```markdown
+---
+name: lowercase-hyphenated
+description: Use when... (max 1024 chars, include triggers)
+---
+
+<objective>...</objective>
+<quick_start>...</quick_start>
+<success_criteria>...</success_criteria>
+<constraints>...</constraints>
+
+<workflow name="workflow-name">
+[Steps]
+</workflow>
+
+<examples>
+[Code blocks]
+</examples>
+
+<anti_patterns>  <!-- optional, table format -->
+| Anti-Pattern | Problem | Correct |
+|--------------|---------|---------|
+</anti_patterns>
+```
+
+**Body target**: ~500-700 words. Excess → `references/`, `examples/`, `scripts/` subdirs.
+
 ## AllHands Sync
 
 `.allhandsignore` excludes project-specific files from sync-back.
@@ -140,6 +256,18 @@ When auditing `.claude/` artifacts:
 1. Read reference docs FIRST (claude-code-patterns skill)
 2. Use actual patterns from refs, not memory
 3. Apply contextual judgment (simple vs complex)
+
+### XML Validation Checklist
+
+Per artifact, verify:
+- [ ] `<objective>` present, 1-2 sentences
+- [ ] `<quick_start>` present, 1-4 steps
+- [ ] `<success_criteria>` present, bullet list
+- [ ] `<constraints>` present, behavioral boundaries
+- [ ] Commands have `<process>` with steps
+- [ ] Skills have `<workflow>` and `<examples>`
+- [ ] NO duplicate prose below XML (see anti-pattern above)
+- [ ] No orphaned/unclosed tags
 
 **Output format**: Critical Issues → Recommendations → Strengths
 
