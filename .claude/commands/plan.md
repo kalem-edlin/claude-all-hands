@@ -3,7 +3,24 @@ description: Begin planning workflow for current feature branch
 argument-hint: [user-prompt]
 ---
 
-# Planning Workflow
+<objective>
+Start or continue structured planning workflow. Creates plan files for feature branches, gathers specialist context, and delegates to planner agent for plan creation/iteration.
+</objective>
+
+<quick_start>
+1. Check plan status via `envoy plans frontmatter`
+2. Handle branch/status appropriately (draft/active/new)
+3. Gather specialist context if creating new plan
+4. Delegate to planner with all context
+</quick_start>
+
+<success_criteria>
+- Plan file exists at `.claude/plans/<branch>/plan.md`
+- Status is "active" (approved) or "draft" (awaiting approval)
+- User has approved plan OR explicitly declined planning
+</success_criteria>
+
+<process>
 
 ## Step 1: Status Check
 
@@ -87,3 +104,12 @@ Planner returns with status:
 
 - **Planning declined** → Proceed with user's original request without planning
 - **Cancelled** → No action needed
+
+</process>
+
+<constraints>
+- NEVER skip status check - always run `envoy plans frontmatter` first
+- NEVER create plan without user approval at Step 4
+- NEVER skip intake gate for vague prompts on new plans
+- Main agent delegates to planner - does not write plan directly
+</constraints>

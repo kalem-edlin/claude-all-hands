@@ -3,21 +3,51 @@ name: orchestration-idols
 description: Use when designing agent orchestration, memory systems, or multi-agent coordination. Contains patterns from wshobson/agents and claude-flow repositories with doc URLs for deeper research.
 ---
 
-# Idol Repository Patterns
+<objective>
+Patterns from production agent orchestration systems. Use doc URLs for deeper research when implementing features inspired by these patterns.
+</objective>
 
-Patterns from production agent orchestration systems. Use doc URLs below for deeper research when implementing specific features that should be inspired by these patterns.
+<quick_start>
+1. Identify pattern category needed (registry, memory, coordination)
+2. Review summary patterns below
+3. Use research-tools skill with doc URLs for implementation details
+</quick_start>
 
-## wshobson/agents
+<success_criteria>
+- Appropriate pattern selected for use case
+- Doc URLs consulted for implementation specifics
+- Pattern adapted to Claude Code context
+</success_criteria>
 
+<workflow>
+### Pattern Selection
+
+| Need | Pattern | Source |
+|------|---------|--------|
+| Dynamic agent loading | Registry Pattern | wshobson/agents |
+| Decentralized coordination | Hive-Mind Consensus | claude-flow |
+| Fast semantic retrieval | Hybrid Memory (Vector) | claude-flow |
+| Session persistence | Context Recovery | claude-flow |
+| Load distribution | Work-Stealing | claude-flow |
+
+### When to Research Deeper
+Use research-tools skill with doc URLs when:
+- Implementing specific patterns (need exact structures)
+- Adapting memory/reasoning systems
+- Building new agent types
+- Debugging coordination issues
+</workflow>
+
+<examples>
+### wshobson/agents
 Simpler agent coordination patterns.
 
 **Documentation:**
 - Architecture: https://github.com/wshobson/agents/blob/main/docs/architecture.md
 - README: https://github.com/wshobson/agents/blob/main/README.md
 
-## claude-flow
-
-Enterprise AI orchestration with extensive tooling. Achieves Claude Code goals via non-Claude-Code-API tooling - useful for understanding what's possible and adapting patterns.
+### claude-flow
+Enterprise AI orchestration with extensive tooling.
 
 **Core Documentation:**
 - README: https://github.com/ruvnet/claude-flow/blob/main/README.md
@@ -39,30 +69,18 @@ Enterprise AI orchestration with extensive tooling. Achieves Claude Code goals v
 - Reasoning: https://github.com/ruvnet/claude-flow/blob/main/docs/reasoning/README.md
 - AgentDB Integration: https://github.com/ruvnet/claude-flow/blob/main/docs/agentdb/AGENTDB_INTEGRATION_PLAN.md
 
-## Key Patterns Summary
+### Key Patterns Summary
 
-### Registry Pattern
-Dynamic agent loading via central registry. Agents discovered by config, not hardcoded.
+**Registry Pattern**: Dynamic agent loading via central registry. Agents discovered by config, not hardcoded.
 
-### Hive-Mind Consensus
-Decentralized coordination, not top-down control. Shared memory for state alignment.
+**Hive-Mind Consensus**: Decentralized coordination, not top-down control. Shared memory for state alignment.
 
-### Hybrid Memory
+**Hybrid Memory**:
 - Vector search (AgentDB/HNSW): Fast semantic retrieval
 - SQLite fallback (ReasoningBank): Reliable, no API keys
 - Auto-consolidates successful patterns
 
-### Context Management
-- 5-exchange conversation limit per task
-- Context recovery files for persistence across sessions
+**Context Management**: 5-exchange conversation limit per task. Context recovery files for persistence.
 
-### Work-Stealing Load Balancing
-Dynamic task redistribution from overloaded to underutilized agents.
-
-## When to Research Deeper
-
-Use research-tools skill with these URLs when:
-- Implementing specific patterns (need exact structures)
-- Adapting memory/reasoning systems
-- Building new agent types
-- Debugging coordination issues
+**Work-Stealing Load Balancing**: Dynamic task redistribution from overloaded to underutilized agents.
+</examples>

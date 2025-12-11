@@ -3,9 +3,25 @@ description: Parse plan dependencies and spawn parallel workers for independent 
 argument-hint: [optional-prompt]
 ---
 
-# Parallel Orchestration
+<objective>
+Analyze plan for parallelization opportunities. Identifies independent work streams and spawns parallel workers for concurrent implementation while main agent handles primary stream.
+</objective>
 
-Analyze plan for parallelization opportunities.
+<quick_start>
+1. Check plan status via `envoy plans frontmatter`
+2. Parse unchecked items for dependency analysis
+3. Identify independent streams (different files/subsystems)
+4. Main agent takes Stream 1, spawn workers for others
+</quick_start>
+
+<success_criteria>
+- Plan analyzed for parallelization opportunities
+- Independent streams identified (or determined sequential)
+- Workers spawned for parallel streams (if any)
+- Main agent implementing Stream 1 or fallback prompt
+</success_criteria>
+
+<process>
 
 ## Step 1: Check Plan Status
 
@@ -73,9 +89,11 @@ Workers spawned: N-1
 Action: [implementing stream 1 | fallback to prompt | no action]
 ```
 
----
+</process>
 
-**Anti-patterns:**
-- ❌ Spawning workers for dependent tasks (will cause conflicts)
-- ❌ More than 3 parallel workers (diminishing returns)
-- ❌ Parallelizing single-file changes (merge conflicts)
+<constraints>
+- NEVER spawn workers for dependent tasks (will cause conflicts)
+- MAX 3 parallel workers (diminishing returns)
+- NEVER parallelize single-file changes (merge conflicts)
+- ALWAYS run `/plan-checkpoint` when workers complete
+</constraints>

@@ -3,9 +3,25 @@ description: Generate XML handoff document for session continuity
 argument-hint: [--save]
 ---
 
-# Session Handoff Generator
+<objective>
+Generate structured XML handoff document capturing session state for seamless context transfer to next session. Prevents knowledge loss and repeated work.
+</objective>
 
-Analyze current session and generate structured XML handoff document for context transfer.
+<quick_start>
+1. Gather git status, branch, recent commits
+2. Extract completed/remaining work from plan
+3. Document failed approaches and critical context
+4. Output XML to chat (or save to file with --save)
+</quick_start>
+
+<success_criteria>
+- XML document captures all session work and state
+- Failed approaches documented with WHY they failed
+- Critical non-obvious context preserved
+- Next session can resume without rediscovery
+</success_criteria>
+
+<process>
 
 ## Output Format
 
@@ -81,6 +97,14 @@ If `--save` argument provided:
 
 Otherwise:
 - Output XML directly to chat for copy/paste
+
+</process>
+
+<constraints>
+- ALWAYS include WHY for failed approaches - prevents repetition
+- NEVER omit critical_context section - even if "none" is the value
+- Be specific in work_completed: include file paths, commit hashes
+</constraints>
 
 ## Usage Examples
 
