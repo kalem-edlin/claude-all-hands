@@ -3,11 +3,33 @@ name: hook-development
 description: Use when creating hooks, implementing PreToolUse/PostToolUse/Stop validation, setting up event-driven automation, or working with hook events and exit codes.
 ---
 
-# Hook Development
+<objective>
+Enable event-driven automation in Claude Code's lifecycle. Hooks provide deterministic control - ensuring certain actions always happen rather than relying on LLM choice.
+</objective>
 
-Hooks are event-driven automation that execute at specific points in Claude Code's lifecycle. Use for deterministic control - ensuring certain actions always happen rather than relying on LLM choice.
+<quick_start>
+1. Identify event (PreToolUse, Stop, etc.)
+2. Choose type: prompt (flexible) vs command (deterministic)
+3. Add hook config to `.claude/settings.json`
+4. For command hooks, create script in `.claude/hooks/scripts/`
+5. Test with `claude --debug`
+</quick_start>
 
-## Quick Reference
+<success_criteria>
+- Hook registered (verify with `/hooks`)
+- Event triggers at correct lifecycle point
+- Exit codes handled properly (0=success, 2=blocking)
+- JSON output parsed correctly if used
+</success_criteria>
+
+<constraints>
+- Prompt hooks have 30s default timeout
+- Command hooks have 60s default timeout
+- Exit code 2 blocks operation (stderr fed to Claude)
+- Other non-zero exits are non-blocking (stderr logged)
+</constraints>
+
+## Event Reference
 
 | Event | When | Control |
 |-------|------|---------|
@@ -85,15 +107,7 @@ Bash/Python scripts for deterministic checks:
 - `$CLAUDE_PROJECT_DIR` - Project root (always available)
 - `$CLAUDE_ENV_FILE` - Persist env vars (SessionStart only)
 
-## Deep References
-
-- `references/event-reference.md` - All events with input/output specs
-- `examples/prompt-hooks.md` - Prompt-based hook examples
-- `examples/command-hooks.md` - Bash/Python script examples
-- `~/.claude-code-docs/docs/hooks.md` - Official reference
-- `~/.claude-code-docs/docs/hooks-guide.md` - Official guide
-
-## Implementation Workflow
+<workflow name="implementation">
 
 1. Identify event (PreToolUse, Stop, etc.)
 2. Choose type: prompt (flexible) vs command (deterministic)
@@ -101,3 +115,13 @@ Bash/Python scripts for deterministic checks:
 4. For command hooks, create script in `.claude/hooks/scripts/`
 5. Test with `claude --debug`
 6. Use `/hooks` to verify registration
+
+</workflow>
+
+## Deep References
+
+- `references/event-reference.md` - All events with input/output specs
+- `examples/prompt-hooks.md` - Prompt-based hook examples
+- `examples/command-hooks.md` - Bash/Python script examples
+- `~/.claude-code-docs/docs/hooks.md` - Official reference
+- `~/.claude-code-docs/docs/hooks-guide.md` - Official guide

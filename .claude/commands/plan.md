@@ -3,7 +3,24 @@ description: Begin planning workflow for current feature branch
 argument-hint: [user-prompt]
 ---
 
-# Planning Workflow
+<objective>
+Start or continue structured planning workflow. Creates plan files for feature branches, gathers specialist context, and delegates to planner agent for plan creation/iteration.
+</objective>
+
+<quick_start>
+1. Check plan status via `envoy plans frontmatter`
+2. Handle branch/status appropriately (draft/active/new)
+3. Gather specialist context if creating new plan
+4. Delegate to planner with all context
+</quick_start>
+
+<success_criteria>
+- Plan file exists at `.claude/plans/<branch>/plan.md`
+- Status is "active" (approved) or "draft" (awaiting approval)
+- User has approved plan OR explicitly declined planning
+</success_criteria>
+
+<process>
 
 ## Step 1: Status Check
 
@@ -30,6 +47,30 @@ Run: `.claude/envoy/envoy plans frontmatter`
     - Options: ["Add to plan", "New branch for this work", "Proceed without planning"]
     - Handle each appropriately
 
+## Step 1.5: Intake Gate (New Plans Only)
+
+**Trigger**: When creating a new plan AND user prompt lacks specifics.
+
+**Skip if**: Continuing draft (context exists) or prompt already detailed.
+
+**Structured questioning** via AskUserQuestion:
+
+1. **Scope**: "What specifically needs to be built/changed?"
+   - Options based on inferred type: [Feature, Bug fix, Refactor, Research, Other]
+
+2. **Constraints**: "Any constraints or requirements?"
+   - Options: [Performance critical, Must maintain backwards compat, Specific tech stack, None/flexible]
+
+3. **Dependencies**: "Dependencies or blockers?"
+   - Options: [Depends on external API, Needs design review, Blocked by other work, None]
+
+4. **Success criteria**: "How will we know it's done?"
+   - Options: [Tests pass, User can X, Performance target, Manual verification]
+
+**Package intake answers** with original prompt for planner delegation.
+
+---
+
 ## Step 2: Gather Specialist Context
 
 Check agent descriptions for relevant specialists (exclude researcher/planner/explorer).
@@ -47,6 +88,7 @@ Check agent descriptions for relevant specialists (exclude researcher/planner/ex
 Send to planner agent:
 - Directive: "create new plan" | "continue draft" | "add to plan"
 - User's original prompt
+- **Intake answers** (scope, constraints, dependencies, success criteria) if gathered
 - Current branch name
 - Specialist findings
 
@@ -62,3 +104,12 @@ Planner returns with status:
 
 - **Planning declined** → Proceed with user's original request without planning
 - **Cancelled** → No action needed
+
+</process>
+
+<constraints>
+- NEVER skip status check - always run `envoy plans frontmatter` first
+- NEVER create plan without user approval at Step 4
+- NEVER skip intake gate for vague prompts on new plans
+- Main agent delegates to planner - does not write plan directly
+</constraints>

@@ -1,75 +1,69 @@
 ---
 name: repomix-extraction
-description: Directory extraction using repomix for pattern discovery. Use when skills/directives fall short and you need to understand codebase patterns in a specific directory.
+description: Directory extraction using repomix. Use for ANY directory exploration or multi-file read - always more efficient than individual Read calls.
 ---
 
-# Repomix Extraction
+<objective>
+Pack directory contents into AI-friendly format for comprehensive pattern analysis. ALWAYS prefer over individual Read calls when exploring directories or reading multiple files.
+</objective>
 
-Pack directory contents into AI-friendly format for comprehensive pattern analysis.
-
-## When to Use
-
-- Skills/directives don't cover the directory you need to understand
-- Need to discover patterns in unfamiliar codebase areas
-- Creating specialist agents that need repo pattern knowledge
-- Analyzing code structure before making changes
-
-## Quick Reference
-
+<quick_start>
 ```bash
-# Pack directory (outputs repomix-output.xml)
-npx repomix@latest path/to/directory
+# Pack directory to stdout (NO FILES CREATED)
+npx repomix@latest --stdout path/to/directory
 
 # Include specific patterns
-npx repomix@latest --include "**/*.ts,**/*.md" path/to/directory
+npx repomix@latest --stdout --include "**/*.ts,**/*.md" path/to/directory
 
-# Exclude noise
-npx repomix@latest --ignore "**/*.log,node_modules/" path/to/directory
+# Compress for large directories
+npx repomix@latest --stdout --compress path/to/directory
+```
+</quick_start>
 
-# Compress for large directories (tree-sitter extraction)
-npx repomix@latest --compress path/to/directory
+<success_criteria>
+- Output streams to stdout (no file created)
+- All relevant files included in single output
+- Patterns identified from combined content
+</success_criteria>
 
-# Output to stdout (for piping)
+<constraints>
+- NEVER use repomix without `--stdout` (creates files in project root)
+- Always stream to stdout, never create output files
+</constraints>
+
+<workflow>
+### 1. Pack Directory to Stdout
+```bash
 npx repomix@latest --stdout path/to/directory
 ```
 
-## Extraction Process
-
-### 1. Pack Directory
-```bash
-npx repomix@latest path/to/directory
-```
-Output: `repomix-output.xml` in current directory
-
-### 2. Read Output
-Read the XML file to analyze:
+### 2. Analyze Output
+From stdout output, identify:
 - File structure conventions
 - Directory organization patterns
-- Naming conventions (files, functions, variables)
+- Naming conventions
 - Code style/idioms
 - Import/export patterns
-- Error handling approaches
 
 ### 3. Synthesize Patterns
 Extract actionable patterns:
 - Recurring code patterns
 - Domain-specific conventions
 - Anti-patterns to avoid
-- Guidelines for system prompts or implementation
+- Guidelines for implementation
+</workflow>
 
-## Options Reference
+<examples>
+### Options Reference
 
 | Flag | Use |
 |------|-----|
+| `--stdout` | REQUIRED - Output to stdout, no file |
 | `--include "glob"` | Include specific file patterns |
 | `--ignore "glob"` | Exclude patterns |
 | `--compress` | Tree-sitter extraction (large dirs) |
-| `--stdout` | Output to stdout instead of file |
-| `--remote URL` | Pack remote repo (GitHub shorthand) |
 
-## Output Format
-
-Return extracted patterns as:
+### Output Format
 ```markdown
 ## Directory Analysis: [path]
 
@@ -87,3 +81,11 @@ Return extracted patterns as:
 ### Recommendations
 [Actionable guidance based on patterns]
 ```
+</examples>
+
+<anti_patterns>
+- Using individual Read calls when exploring directories
+- Running repomix without `--stdout` flag
+- Creating output files in project root
+- Reading files one by one when batch extraction available
+</anti_patterns>
