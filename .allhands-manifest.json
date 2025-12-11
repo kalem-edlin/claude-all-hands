@@ -10,14 +10,16 @@
     ".claude/settings.json",
     ".claude/docs/**",
     ".husky/**",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "CLAUDE.project.md"
   ],
   "exclude": [
     "**/.venv/**",
     "**/__pycache__/**",
     "**/*.pyc",
     "**/.git/**",
-    ".claude/settings.local.json"
+    ".claude/settings.local.json",
+    ".claude/plans/**"
   ],
   "internal": [
     "scripts/allhands/**",
@@ -27,7 +29,6 @@
     ".github/**",
     "README.md",
     "package.json",
-    "package-lock.json",
-    ".claude/plans/**"
+    "package-lock.json"
   ]
 }

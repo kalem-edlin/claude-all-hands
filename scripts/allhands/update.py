@@ -8,13 +8,6 @@ from pathlib import Path
 from typing import Set
 
 from .manifest import Manifest
-from .patch import (
-    apply_patch,
-    generate_patch,
-    get_patch_base_commit,
-    read_patch_file,
-    write_patch_file,
-)
 
 
 def get_staged_files(repo_path: Path) -> Set[str]:
@@ -42,6 +35,10 @@ def get_allhands_root() -> Path:
 
 def cmd_update(auto_yes: bool = False) -> int:
     """Update target repo from allhands source.
+
+    Copies all distributable files from allhands, overwriting target versions.
+    Project-specific files (CLAUDE.project.md, .husky/project/, settings.local.json)
+    are preserved since they're not in the distribute list.
 
     Must be run from within target repo.
     """
@@ -77,27 +74,49 @@ def cmd_update(auto_yes: bool = False) -> int:
         print("\nRun 'git stash' or commit first.", file=sys.stderr)
         return 1
 
-    # Read existing patch
-    existing_patch = read_patch_file(target_root)
-    base_commit = get_patch_base_commit(target_root)
-
     print(f"Found {len(distributable)} distributable files")
-    if base_commit:
-        print(f"Current patch base: {base_commit}")
+
+    # Check which files will be overwritten
+    will_overwrite = []
+    deleted_in_source = []
+
+    for rel_path in distributable:
+        source_file = allhands_root / rel_path
+        target_file = target_root / rel_path
+
+        if not source_file.exists():
+            if target_file.exists():
+                deleted_in_source.append(rel_path)
+            continue
+
+        if target_file.exists():
+            if source_file.read_bytes() != target_file.read_bytes():
+                will_overwrite.append(str(rel_path))
+
+    # Warn about overwrites
+    if will_overwrite:
+        print(f"\n{'!'*60}")
+        print("WARNING: The following files will be OVERWRITTEN:")
+        print(f"{'!'*60}")
+        for f in sorted(will_overwrite):
+            print(f"  → {f}")
+        print()
+
+        if not auto_yes:
+            confirm = input("Continue and overwrite these files? [y/N]: ").strip().lower()
+            if confirm != "y":
+                print("Aborted. No changes made.")
+                return 1
 
     # Copy updated files
     updated = 0
     created = 0
-    deleted_in_source = []
 
     for rel_path in sorted(distributable):
         source_file = allhands_root / rel_path
         target_file = target_root / rel_path
 
         if not source_file.exists():
-            # File removed from source
-            if target_file.exists():
-                deleted_in_source.append(rel_path)
             continue
 
         target_file.parent.mkdir(parents=True, exist_ok=True)
@@ -123,44 +142,10 @@ def cmd_update(auto_yes: bool = False) -> int:
                     print(f"  Deleted: {f}")
 
     print(f"\nUpdated: {updated}, Created: {created}")
-
-    # Re-apply patch
-    if existing_patch.strip():
-        print("\nApplying project-specific patch...")
-        success, message = apply_patch(target_root, existing_patch, dry_run=True)
-
-        if success:
-            success, message = apply_patch(target_root, existing_patch)
-            if success:
-                print("Patch applied successfully")
-            else:
-                print(f"Warning: Patch partially applied:\n{message}", file=sys.stderr)
-        else:
-            print(f"Error: Patch conflicts detected:\n{message}", file=sys.stderr)
-            print("\nOptions:")
-            print("  1. Manually resolve conflicts")
-            print("  2. Run 'allhands update' again after fixing")
-            print("  3. Delete .allhands.patch to discard customizations")
-            return 1
-
-    # Regenerate patch with new base
-    print("\nRegenerating patch with updated base commit...")
-    changed_files = []
-    for rel_path in distributable:
-        source_file = allhands_root / rel_path
-        target_file = target_root / rel_path
-        if target_file.exists() and source_file.exists():
-            if source_file.read_bytes() != target_file.read_bytes():
-                changed_files.append(rel_path)
-
-    if changed_files:
-        new_patch = generate_patch(allhands_root, target_root, changed_files)
-        write_patch_file(target_root, new_patch)
-        print(f"Updated .allhands.patch with {len(changed_files)} customizations")
-    else:
-        # Clear patch if no customizations
-        write_patch_file(target_root, "")
-        print("No customizations - .allhands.patch cleared")
-
     print("\nUpdate complete!")
+    print("\nNote: Project-specific files preserved:")
+    print("  - CLAUDE.project.md")
+    print("  - .claude/settings.local.json")
+    print("  - .husky/project/*")
+
     return 0

@@ -5,3 +5,8 @@
 if [ -n "$ALLHANDS_PATH" ]; then
     "$ALLHANDS_PATH/scripts/allhands.sh" sync-back --auto 2>/dev/null || true
 fi
+
+# Project-specific post-merge (TARGET repos)
+if [ -f ".husky/project/post-merge" ]; then
+    . "$(dirname "$0")/project/post-merge"
+fi

@@ -26,13 +26,12 @@ def main():
     init_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts")
 
     # update command
-    update_parser = subparsers.add_parser("update", help="Pull latest from allhands, apply patches")
+    update_parser = subparsers.add_parser("update", help="Pull latest from allhands")
     update_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts")
 
     # sync-back command
     sync_parser = subparsers.add_parser("sync-back", help="Sync changes back to allhands as PR")
     sync_parser.add_argument("--auto", action="store_true", help="Non-interactive mode (for hooks)")
-    sync_parser.add_argument("--yes", "-y", action="store_true", help="Skip confirmation prompts")
 
     args = parser.parse_args()
 
@@ -42,7 +41,7 @@ def main():
         elif args.command == "update":
             return cmd_update(auto_yes=args.yes)
         elif args.command == "sync-back":
-            return cmd_sync_back(auto=args.auto, auto_yes=args.yes)
+            return cmd_sync_back(auto=args.auto)
     except KeyboardInterrupt:
         print("\nAborted.", file=sys.stderr)
         return 130

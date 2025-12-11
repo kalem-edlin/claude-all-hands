@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 from .manifest import Manifest, is_ignored, load_ignore_patterns
 
@@ -48,15 +48,9 @@ def get_changed_managed_files(
     allhands_root: Path,
     manifest: Manifest,
     ignore_patterns: List[str],
-) -> Tuple[List[Path], List[Path]]:
-    """Get managed files that differ from source.
-
-    Returns (base_changes, project_changes) where:
-    - base_changes: Changes that should go back to allhands
-    - project_changes: Changes that stay as patches
-    """
-    base_changes = []
-    project_changes = []
+) -> List[Path]:
+    """Get managed files that differ from source (sync-back candidates)."""
+    changes = []
 
     for rel_path in manifest.get_distributable_files():
         str_path = str(rel_path)
@@ -72,16 +66,14 @@ def get_changed_managed_files(
             continue
 
         if not source_file.exists():
-            # New file in target - could be sync-back candidate
-            base_changes.append(rel_path)
+            # New file in target - sync-back candidate
+            changes.append(rel_path)
             continue
 
         if source_file.read_bytes() != target_file.read_bytes():
-            # TODO: More sophisticated diff analysis to separate base vs project changes
-            # For now, treat all changes as potential base changes
-            base_changes.append(rel_path)
+            changes.append(rel_path)
 
-    return base_changes, project_changes
+    return changes
 
 
 def get_new_files_in_managed_dirs(
@@ -120,23 +112,10 @@ def create_or_update_pr(
     target_root: Path,
     files_to_sync: List[Path],
     branch_name: str,
-    auto: bool,
 ) -> bool:
     """Create or update PR in allhands repo with synced changes."""
     repo_name = get_repo_name(target_root)
     pr_branch = f"{repo_name}/{branch_name}"
-
-    print(f"\nPreparing PR branch: {pr_branch}")
-    print(f"Files to sync: {len(files_to_sync)}")
-
-    for f in files_to_sync:
-        print(f"  - {f}")
-
-    if not auto:
-        confirm = input("\nCreate/update PR? [y/N]: ").strip().lower()
-        if confirm != "y":
-            print("Skipped.")
-            return False
 
     # Check if branch exists
     result = subprocess.run(
@@ -183,7 +162,6 @@ def create_or_update_pr(
         cwd=allhands_root,
     )
     if result.returncode == 0:
-        print("No changes to commit")
         subprocess.run(["git", "checkout", "main"], cwd=allhands_root, capture_output=True)
         return True
 
@@ -225,11 +203,11 @@ def create_or_update_pr(
             text=True,
         )
         if result.returncode == 0:
-            print(f"Created PR: {result.stdout.strip()}")
+            print(f"PR: {result.stdout.strip()}")
         else:
-            print(f"Warning: PR creation failed: {result.stderr}", file=sys.stderr)
+            print(f"PR creation failed: {result.stderr}", file=sys.stderr)
     else:
-        print("PR already exists - updated with new commits")
+        print(f"PR updated: {pr_branch}")
 
     # Return to main
     subprocess.run(["git", "checkout", "main"], cwd=allhands_root, capture_output=True)
@@ -237,7 +215,7 @@ def create_or_update_pr(
     return True
 
 
-def cmd_sync_back(auto: bool = False, auto_yes: bool = False) -> int:
+def cmd_sync_back(auto: bool = False) -> int:
     """Sync changes back to allhands as PR.
 
     Any branch can sync back - each creates its own PR: [repo]/[branch]
@@ -245,8 +223,7 @@ def cmd_sync_back(auto: bool = False, auto_yes: bool = False) -> int:
     Manual mode works on any branch.
 
     Args:
-        auto: Non-interactive mode (for hooks) - skip conflicts, don't prompt
-        auto_yes: Skip confirmation prompts but still show summary
+        auto: Non-interactive mode (for hooks) - silent on errors
     """
     target_root = Path.cwd().resolve()
 
@@ -288,22 +265,17 @@ def cmd_sync_back(auto: bool = False, auto_yes: bool = False) -> int:
     manifest = Manifest(allhands_root)
     ignore_patterns = load_ignore_patterns(target_root)
 
-    print(f"Checking for sync-back candidates...")
-    print(f"Target: {target_root}")
-    print(f"Source: {allhands_root}")
-    print(f"Branch: {current_branch}")
-
-    # Find changed files
-    base_changes, project_changes = get_changed_managed_files(
+    # Find changed files (all non-ignored differences sync back)
+    changed_files = get_changed_managed_files(
         target_root, allhands_root, manifest, ignore_patterns
     )
 
-    # Find new files
+    # Find new files in managed dirs
     new_files = get_new_files_in_managed_dirs(
         target_root, allhands_root, manifest, ignore_patterns
     )
 
-    files_to_sync = base_changes + new_files
+    files_to_sync = changed_files + new_files
 
     if not files_to_sync:
         print("No changes to sync back")
@@ -312,36 +284,19 @@ def cmd_sync_back(auto: bool = False, auto_yes: bool = False) -> int:
     repo_name = get_repo_name(target_root)
     pr_branch = f"{repo_name}/{current_branch}"
 
-    print(f"\n{'='*60}")
-    print(f"SYNC-BACK TO CLAUDE-ALL-HANDS")
-    print(f"{'='*60}")
-    print(f"PR Branch: {pr_branch}")
-    print(f"Files to include ({len(files_to_sync)}):")
-    print()
+    print(f"\nSyncing {len(files_to_sync)} file(s) back to claude-all-hands...")
+    print(f"PR branch: {pr_branch}")
+    print(f"Files:")
     for f in files_to_sync:
         print(f"  → {f}")
-    print()
-    print(f"{'─'*60}")
-    print("To EXCLUDE files from sync-back, add patterns to .allhandsignore")
-    print("Example: .claude/agents/my-project-agent.md")
-    print()
-    print("Target-specific vs All-Hands:")
-    print("  • Target-specific: project agents, local configs → add to .allhandsignore")
-    print("  • All-Hands: framework improvements, bug fixes → include in sync")
-    print(f"{'─'*60}")
+    print(f"\nTo exclude files, add patterns to .allhandsignore")
 
-    if auto:
-        # Auto mode: attempt sync, skip on any error
-        print("\n[AUTO MODE] Proceeding with sync...")
-        try:
-            create_or_update_pr(
-                allhands_root, target_root, files_to_sync, current_branch, auto=True
-            )
-        except Exception as e:
-            print(f"Warning: Sync-back failed: {e}", file=sys.stderr)
-        return 0
-
-    # Interactive mode
-    return 0 if create_or_update_pr(
-        allhands_root, target_root, files_to_sync, current_branch, auto=auto_yes
-    ) else 1
+    # Create PR (no confirmation needed)
+    try:
+        success = create_or_update_pr(
+            allhands_root, target_root, files_to_sync, current_branch
+        )
+        return 0 if success else 1
+    except Exception as e:
+        print(f"Error: Sync-back failed: {e}", file=sys.stderr)
+        return 1 if not auto else 0  # Don't fail hooks
