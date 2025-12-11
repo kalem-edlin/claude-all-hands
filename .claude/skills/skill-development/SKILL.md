@@ -17,8 +17,8 @@ Skills extend Claude's capabilities through specialized knowledge and workflows.
 skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter (name, description)
-│   └── Markdown body (~1,500-2,000 words)
-└── Bundled Resources (optional)
+│   └── Markdown body (~500-700 words target)
+└── Bundled Resources (only if needed)
     ├── references/     - Detailed docs, loaded as needed
     ├── examples/       - Working code, copyable
     └── scripts/        - Utilities, executable
@@ -31,7 +31,7 @@ Three-level loading for context efficiency:
 | Level | Contents | When Loaded | Size Target |
 |-------|----------|-------------|-------------|
 | Metadata | name + description | Always | ~100 words |
-| Body | SKILL.md content | Skill triggers | 1,500-2,000 words |
+| Body | SKILL.md content | Skill triggers | ~500-700 words |
 | Resources | references/, examples/, scripts/ | As needed | Unlimited |
 
 For detailed patterns, see `references/progressive-disclosure.md`.
@@ -57,11 +57,11 @@ Analyze each use case to identify:
 ### Step 3: Create Structure
 
 ```bash
-mkdir -p .claude/skills/skill-name/{references,examples,scripts}
+mkdir -p .claude/skills/skill-name
 touch .claude/skills/skill-name/SKILL.md
 ```
 
-Create only directories actually needed.
+**Minimal by default**: Only create `references/`, `examples/`, or `scripts/` when content exceeds SKILL.md capacity or requires separate files. Most skills need only SKILL.md.
 
 ### Step 4: Write SKILL.md
 
@@ -113,7 +113,7 @@ Step-by-step procedures for main use cases.
 - **`examples/working-example.sh`** - Annotated example
 ```
 
-**Keep body lean**: Move detailed content to references/.
+**Keep body lean**: Only move to references/ when content exceeds ~2,000 words or requires separate file format.
 
 ### Step 5: Validate
 
@@ -130,9 +130,9 @@ Step-by-step procedures for main use cases.
 
 **Content Quality**:
 - [ ] Body uses imperative/infinitive form (not second person)
-- [ ] Body is 1,500-2,000 words (max 3,000)
-- [ ] Detailed content moved to references/
-- [ ] Resources clearly referenced in body
+- [ ] Body is ~500-700 words (move excess to references/)
+- [ ] Resources only created when necessary
+- [ ] Resources clearly referenced in body if present
 
 ### Step 6: Iterate
 
@@ -169,9 +169,18 @@ description: Use when user asks to "create a hook", "add a PreToolUse hook", "va
 
 ### Too Much in SKILL.md
 
-**Bad**: 8,000 words in single file
+**Bad**: 1,000+ words in SKILL.md without references
 
-**Good**: 1,800 words in SKILL.md + detailed content in references/
+**Good**: ~500-700 words in SKILL.md, move excess to references/
+
+### Unnecessary Reference Files
+
+**Bad**: Creating references/ for simple skills that fit in ~500 words
+
+**Good**: Most skills are SKILL.md only. Create subdirs only when:
+- Content exceeds ~700 words
+- Need executable scripts or separate file formats
+- Multiple distinct reference documents required
 
 ### Second Person Writing
 

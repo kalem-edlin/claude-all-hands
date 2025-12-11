@@ -19,13 +19,49 @@ Main agent calls curator with this skill when:
 
 ## Process
 
-### 1. Analyze Gap
-Review the user's original prompt and identify:
-- What domain/area lacks specialist coverage?
-- What repo patterns would this specialist need to know?
-- What existing agents (if any) are adjacent?
+### Inference Logic
 
-### 2. Propose Options
+When curator invocation already specifies details, skip those questions:
+- Specialist name specified → skip name confirmation
+- Source directories specified → skip directory question
+- Specific domain described → skip option proposal, go direct to requirements
+
+### 1. Research Phase (required)
+
+Before proposing options, research the domain:
+- Use research-tools skill to query best practices for the inferred domain
+- Gather documentation URLs for the specialist's area of focus
+- Synthesize findings for system prompt inclusion
+
+**AskUserQuestion**: "What documentation should this specialist learn from?"
+- Option A: [Inferred docs based on domain]
+- Option B: I'll provide specific URLs
+- Option C: Skip documentation research
+
+### 2. Extract Repo Patterns
+
+Use repomix-extraction skill to understand existing patterns:
+
+**AskUserQuestion**: "Which directories contain patterns this specialist should learn?"
+- Option A: [Inferred directory from prompt context]
+- Option B: Browse repository (I'll suggest directories)
+- Option C: Skip (no repo patterns needed)
+- Option D: New directory (specialist for new feature set)
+
+If directories specified:
+1. Use repomix-extraction skill to pack and analyze
+2. Extract patterns for system prompt embedding
+
+### 3. Confirm Name
+
+Suggest specialist name based on domain/scope:
+
+**AskUserQuestion**: "[suggested-name]?"
+- Option A: Yes, use this name
+- Option B: I'll provide a different name
+
+### 4. Propose Options (if not already specified)
+
 Use **AskUserQuestion** to present specialist options:
 
 ```
@@ -36,7 +72,8 @@ Based on your prompt, these specialist types could help:
 3. Custom - describe your own
 ```
 
-### 3. Gather Requirements
+### 5. Gather Requirements
+
 After user selects, use **AskUserQuestion** for each:
 
 **Scope**: "What specific areas should this specialist cover?"
@@ -51,6 +88,7 @@ After user selects, use **AskUserQuestion** for each:
 - Orchestration (multi-step workflows)
 
 **Skills**: "What skills should this specialist have access to?"
+- repomix-extraction (always included for pattern discovery)
 - research-tools (web search, documentation)
 - claude-code-patterns (Claude Code best practices)
 - Custom skill (will need to be built)
@@ -60,11 +98,51 @@ After user selects, use **AskUserQuestion** for each:
 - With Bash - for running commands
 - Full access - omit tools field to inherit all
 
-### 4. Generate Agent Definition
+### 6. Generate Agent Definition
+
 Return to main agent with proposed agent file following the structure below.
 
-### 5. Offer Skill Creation
-If custom skill selected, ask:
+**Pattern Embedding**: If repo patterns extracted, include in system prompt:
+```
+This specialist has learned patterns from: {directories}
+
+**[Domain] Patterns:**
+- File structure: {pattern}
+- Naming: {pattern}
+- Code style: {pattern}
+
+Apply these patterns when {doing agent's task}.
+```
+
+### 7. Create Maintenance Skill (auto)
+
+Auto-create companion directive skill for every specialist:
+
+**File**: `.claude/skills/{specialist-name}-maintenance/SKILL.md`
+
+```yaml
+---
+name: {specialist-name}-maintenance
+description: Directives for maintaining {specialist-name} agent. Use when updating specialist knowledge.
+---
+
+# {Specialist Name} Maintenance
+
+## Pattern Sources
+Directories: {list of directories}
+
+## Embedded Patterns
+{High-level summary of extracted patterns}
+
+## Update Process
+1. Re-run repomix on source directories
+2. Analyze for new/changed patterns
+3. Update agent system prompt
+```
+
+### 8. Offer Custom Skill Creation
+
+If custom skill selected in requirements:
 "This specialist needs a custom skill. Would you like to define it now?"
 - If yes: use skill-development skill to create it
 - If no: note as TODO in agent file
@@ -85,7 +163,7 @@ description: |
 model: inherit
 color: blue
 allowed-tools: Read, Glob, Grep
-skills: skill-name
+skills: repomix-extraction, skill-name
 ---
 
 You are [agent role description]...

@@ -6,7 +6,7 @@ description: |
   <example>
   user: "Plan [feature] | Create implementation plan | Update the plan | Run checkpoint"
   </example>
-skills: research-tools, git-ops
+skills: research-tools, git-ops, repomix-extraction
 allowed-tools: Read, Glob, Grep, Edit, Bash
 model: inherit
 color: magenta
