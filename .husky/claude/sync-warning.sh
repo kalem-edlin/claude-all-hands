@@ -26,7 +26,10 @@ if [ -f ".allhandsignore" ]; then
     done < .allhandsignore
 fi
 
-# Filter out ignored files
+# Check if ALLHANDS_PATH is set for diff comparison
+ALLHANDS_PATH="${ALLHANDS_PATH:-}"
+
+# Filter out ignored files AND files identical to allhands source
 SYNC_FILES=""
 for file in $MANAGED_CHANGES; do
     is_ignored=false
@@ -35,7 +38,18 @@ for file in $MANAGED_CHANGES; do
             $pattern) is_ignored=true; break ;;
         esac
     done
+
     if [ "$is_ignored" = false ]; then
+        # If we know allhands path, check if file differs from source
+        if [ -n "$ALLHANDS_PATH" ] && [ -f "$ALLHANDS_PATH/$file" ]; then
+            # Compare staged version to allhands source
+            STAGED_CONTENT=$(git show ":$file" 2>/dev/null || true)
+            SOURCE_CONTENT=$(cat "$ALLHANDS_PATH/$file" 2>/dev/null || true)
+            if [ "$STAGED_CONTENT" = "$SOURCE_CONTENT" ]; then
+                # File is identical to allhands - not a real change
+                continue
+            fi
+        fi
         SYNC_FILES="$SYNC_FILES
   → $file"
     fi

@@ -75,3 +75,8 @@ This section is specific to this test target repository.
 
 - Use PostgreSQL for database
 - API endpoints at /api/v2/
+
+## Sync-Back Test
+
+This section was added in a target repo to test sync-back flow.
+Framework improvements discovered during development should sync back.
