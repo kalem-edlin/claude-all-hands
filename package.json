@@ -24,11 +24,15 @@
   ],
   "author": "kalem-edlin",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/yargs": "^17.0.32",
     "esbuild": "^0.24.0",
     "husky": "^9.1.7",
+    "tsx": "^4.19.0",
     "typescript": "^5.3.0"
   },
   "dependencies": {
