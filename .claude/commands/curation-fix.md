@@ -3,9 +3,25 @@ description: Spawn curator worker for .claude/ infrastructure fixes while on fea
 argument-hint: [task-description]
 ---
 
-# Curation Side-Fix
+<objective>
+Spawn background worker to handle .claude/ infrastructure changes without interrupting current feature work. Isolates curation changes on separate branch.
+</objective>
 
-Spawn a background worker to handle `.claude/` infrastructure changes without interrupting current feature work.
+<quick_start>
+1. Validate current branch (handle main specially)
+2. Build task context from $ARGUMENTS
+3. Spawn worker via `envoy parallel spawn`
+4. Return worker info and continue feature work
+</quick_start>
+
+<success_criteria>
+- Worker spawned on curation/<task-name> branch
+- Worker has clear mission from task description
+- Main session can continue feature work uninterrupted
+- User has commands to check status/results/cleanup
+</success_criteria>
+
+<process>
 
 ## When to Use
 
@@ -66,3 +82,11 @@ Return to user:
 - Cleanup when done: `envoy parallel cleanup --worker <name>`
 
 Continue with current feature work.
+
+</process>
+
+<constraints>
+- Worker MUST NOT spawn additional workers (nesting blocked)
+- Worker operates on SEPARATE branch from main work
+- Changes isolated until explicitly merged
+</constraints>

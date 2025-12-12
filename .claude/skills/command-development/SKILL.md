@@ -3,15 +3,30 @@ name: command-development
 description: Use when user asks to "create a slash command", "add a command", "write custom command", or needs guidance on command frontmatter, dynamic arguments, or bash execution.
 ---
 
-# Command Development
+<objective>
+Guide creation of Claude Code slash commands with proper structure, frontmatter, and dynamic features. Commands are Markdown files containing prompts that Claude executes when invoked, providing reusability and quick access to complex workflows.
+</objective>
 
-Guide for creating Claude Code slash commands with proper structure, frontmatter, and dynamic features.
+<quick_start>
+1. Create `.claude/commands/command-name.md`
+2. Add frontmatter if needed (description, allowed-tools, argument-hint)
+3. Write prompt body with dynamic arguments (`$1`, `$ARGUMENTS`, `@file`)
+4. Test with `/command-name [args]`
+</quick_start>
 
-## Overview
+<success_criteria>
+- Command file exists in correct location with `.md` extension
+- Frontmatter valid YAML (if present)
+- Dynamic arguments work as expected
+- Tool restrictions appropriate for command scope
+</success_criteria>
 
-Slash commands are Markdown files containing prompts that Claude executes when invoked. Commands provide reusability, consistency, and quick access to complex workflows.
-
-**Key principle**: Commands are instructions FOR Claude (agent consumption), not messages TO users.
+<constraints>
+- Commands are instructions FOR Claude, not messages TO users
+- Be restrictive with tools: `Bash(git:*)` not `Bash(*)`
+- Descriptions under 60 characters
+- Single responsibility per command
+</constraints>
 
 ## Command Locations
 
@@ -24,8 +39,6 @@ Slash commands are Markdown files containing prompts that Claude executes when i
 Project commands take precedence over personal commands with same name.
 
 ## File Format
-
-Commands are `.md` files. The filename (minus extension) becomes the command name.
 
 **Minimal command** (no frontmatter):
 ```markdown
@@ -80,8 +93,6 @@ argument-hint: [pr-number] [priority] [assignee]
 ---
 Review PR #$1 with priority $2, assign to $3.
 ```
-
-Usage: `/review-pr 456 high alice`
 
 ## File References
 
@@ -142,47 +153,7 @@ Review changes and suggest commit message.
     └── generate.md # /generate (project:docs)
 ```
 
-Subdirectory appears in `/help` description but not command name.
-
-## User Interaction (AskUserQuestion)
-
-For commands requiring user decisions, use AskUserQuestion tool:
-
-```markdown
----
-description: Deploy with environment selection
----
-
-Use AskUserQuestion to confirm deployment:
-
-Question: "Deploy to which environment?"
-Options:
-1. Development - Lower risk, fast iteration
-2. Staging - Pre-production testing
-3. Production - Live deployment (requires approval)
-
-After user selection, proceed with deployment to chosen environment.
-```
-
-## Best Practices
-
-### Command Design
-- Single responsibility per command
-- Clear descriptions under 60 characters
-- Document arguments with `argument-hint`
-- Use verb-noun naming (review-pr, fix-issue)
-
-### Tool Restrictions
-- Be restrictive: `Bash(git:*)` not `Bash(*)`
-- Only specify tools when different from conversation permissions
-- Document why specific tools needed
-
-### Error Handling
-- Consider missing/invalid arguments
-- Provide helpful error messages
-- Suggest corrective actions
-
-## Common Patterns
+<examples>
 
 ### Read-Only Analysis
 ```markdown
@@ -205,6 +176,25 @@ Analyze and suggest...
 ```markdown
 Compare @$1 with @$2 and identify differences...
 ```
+
+### User Interaction (AskUserQuestion)
+```markdown
+---
+description: Deploy with environment selection
+---
+
+Use AskUserQuestion to confirm deployment:
+
+Question: "Deploy to which environment?"
+Options:
+1. Development - Lower risk, fast iteration
+2. Staging - Pre-production testing
+3. Production - Live deployment (requires approval)
+
+After user selection, proceed with deployment to chosen environment.
+```
+
+</examples>
 
 ## Additional Resources
 

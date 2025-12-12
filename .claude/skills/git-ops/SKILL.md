@@ -3,14 +3,45 @@ name: git-ops
 description: Use when performing git operations (commits, PRs, conflicts, branch mgmt). Planner auto-derives from plan context. Main agent (direct mode) may prompt user.
 ---
 
-# Git Operations Skill
+<objective>
+Standardize git operations across planning and direct modes. Ensures consistent commit messages, PR bodies, conflict resolution, and branch management while enforcing safety rules for destructive operations.
+</objective>
 
-## Usage Context
+<quick_start>
+- **Commit**: `git diff --cached` then generate `<type>(<scope>): <description>`
+- **PR**: Use `gh pr create -a @me` with template below
+- **Conflict**: Analyze with `git show :1/:2/:3:<file>`, resolve, stage
+- **Branch**: Always use prefix (feat/, fix/, chore/, etc.)
+</quick_start>
+
+<success_criteria>
+- Commits follow Conventional Commits format
+- PR bodies include Summary, Changes with inline links, Plan Reference
+- Conflicts resolved with intent preserved from commit history
+- No destructive operations without explicit user confirmation
+</success_criteria>
+
+<constraints>
+**ALWAYS AskUserQuestion before:**
+- Force push (`--force`, `-f`)
+- Hard reset (`reset --hard`)
+- Branch deletion (`branch -D`)
+- Rebase of shared branches
+
+**NEVER:**
+- Force push main/master without explicit confirmation
+- Skip pre-commit hooks unless requested
+- Amend commits not authored by current user
+</constraints>
+
+<workflow name="usage-context">
 
 **Planner Agent (plan mode)**: Auto-generate all commit/PR content from plan context
 **Main Agent (direct mode)**: Prompt user if insufficient context
 
-## Commit Message Generation
+</workflow>
+
+<workflow name="commit-message">
 
 Conventional Commits: `<type>(<scope>): <description>`
 
@@ -26,7 +57,9 @@ Types: feat, fix, chore, refactor, docs, test, style, perf, ci, build
 2. If clear context: auto-generate
 3. If ambiguous: AskUserQuestion for message
 
-## PR Creation
+</workflow>
+
+<workflow name="pr-creation">
 
 ### Pre-PR Checklist
 1. Check if README/docs need updates for this change
@@ -65,7 +98,9 @@ EOF
 - If plan exists: derive from plan
 - If no plan: AskUserQuestion for PR details
 
-## Merge Conflict Resolution
+</workflow>
+
+<workflow name="conflict-resolution">
 
 ### Detection
 ```bash
@@ -88,7 +123,9 @@ git show :3:<file>  # theirs
 3. Propose resolution with explanation
 4. Apply fix, stage, continue rebase/merge
 
-## Branch Management
+</workflow>
+
+<workflow name="branch-management">
 
 ### Prefixes (enforced)
 feat/, fix/, chore/, refactor/, exp/, docs/, quick/
@@ -106,20 +143,11 @@ git branch --merged main  # list candidates
 git branch -d <branch>
 ```
 
-## Safety Rules
+</workflow>
 
-**ALWAYS AskUserQuestion before:**
-- Force push (`--force`, `-f`)
-- Hard reset (`reset --hard`)
-- Branch deletion (`branch -D`)
-- Rebase of shared branches
+<workflow name="checkpoint-integration">
 
-**NEVER:**
-- Force push main/master without explicit confirmation
-- Skip pre-commit hooks unless requested
-- Amend commits not authored by current user
-
-## Checkpoint Integration (Planner Only)
+**Planner Only**
 
 ### Non-Final Checkpoint
 After user testing approval:
@@ -135,3 +163,5 @@ git add -A
 git commit -m "<type>(<scope>): complete <plan name>"
 gh pr create --title "<plan name>" --body "<auto-derived>"
 ```
+
+</workflow>

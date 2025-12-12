@@ -2,9 +2,25 @@
 description: Parallel discovery - run multiple subagents simultaneously for read-only exploration
 ---
 
-# Parallel Discovery Mode
+<objective>
+Execute parallel read-only exploration using multiple subagents simultaneously. Gathers diverse perspectives for planning or research without code changes.
+</objective>
 
-Execute parallel subagent discovery for: $ARGUMENTS
+<quick_start>
+1. Identify 2-4 independent discovery streams from task
+2. Spawn Task tool calls simultaneously with `run_in_background: true`
+3. Aggregate results via AgentOutputTool
+4. Return unified analysis with source attribution
+</quick_start>
+
+<success_criteria>
+- Multiple subagents completed exploration in parallel
+- No overlapping scopes between subagents
+- Unified synthesis returned with findings attributed by source
+- No write operations performed (read-only mode)
+</success_criteria>
+
+<process>
 
 ## 1. Analyze Task
 
@@ -42,10 +58,12 @@ After all subagents complete (use AgentOutputTool):
 
 Present unified analysis. Cite which subagent contributed what finding.
 
----
+</process>
 
-**Anti-patterns:**
-- ❌ Overlapping scopes between subagents
-- ❌ Verbose subagent prompts (defeats context preservation)
-- ❌ Using for simple tasks (only when multi-perspective valuable)
-- ❌ Write operations (this is READ-ONLY discovery)
+<constraints>
+- NO overlapping scopes between subagents
+- NO verbose subagent prompts (defeats context preservation)
+- NO write operations (this is READ-ONLY discovery)
+- NO use for simple tasks (only when multi-perspective valuable)
+- MAX 4 parallel streams
+</constraints>

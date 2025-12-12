@@ -3,11 +3,24 @@ name: claude-code-patterns
 description: Use when building agents, skills, hooks, or tool configs. Contains Claude Code native feature documentation and structure patterns.
 ---
 
-# Claude Code Best Practices
+<objective>
+Reference for Claude Code native features. Docs auto-sync to `~/.claude-code-docs/docs/`. Read local docs for authoritative reference matching task use case.
+</objective>
 
-Docs auto-sync on startup at `~/.claude-code-docs/docs/`. For ANY GIVEN TASK, read local docs for authoritative reference that match the tasks use case.
+<quick_start>
+1. Identify what you're building (skill, agent, hook, etc.)
+2. Read corresponding docs from `~/.claude-code-docs/docs/`
+3. Apply patterns from doc categories below
+</quick_start>
 
-## Workflow: When to Read Which Docs
+<success_criteria>
+- Correct doc file(s) consulted for task type
+- Implementation follows official patterns
+- Structure matches documented conventions
+</success_criteria>
+
+<workflow>
+### Doc Selection by Task
 
 | Building | Read These (in ~/.claude-code-docs/docs/) |
 |----------|------------------------------------------|
@@ -21,7 +34,7 @@ Docs auto-sync on startup at `~/.claude-code-docs/docs/`. For ANY GIVEN TASK, re
 | IDE Integration | vs-code.md, jetbrains.md, devcontainer.md |
 | CI/CD | github-actions.md, gitlab-ci-cd.md, headless.md |
 
-## Doc Categories
+### Doc Categories
 
 **Core (curator priority)**: skills.md, sub-agents.md, hooks-guide.md, hooks.md, mcp.md, memory.md, plugins.md
 
@@ -34,18 +47,18 @@ Docs auto-sync on startup at `~/.claude-code-docs/docs/`. For ANY GIVEN TASK, re
 **CI/CD**: github-actions.md, gitlab-ci-cd.md, headless.md
 
 **Reference**: cli-reference.md, common-workflows.md, troubleshooting.md, changelog.md, quickstart.md
+</workflow>
 
-## Extended Patterns (./docs/)
-
-Read these for specific scenarios:
+<examples>
+### Extended Patterns (./docs/)
 - `docs/context-hygiene.md` - CLAUDE.md priority rules, poison context detection
 
-## Community Patterns
-
+### Community Patterns
 For advanced patterns beyond official docs:
 - [claudelog.com](https://claudelog.com) - community mechanics and patterns
 - [claudelog.com/mechanics/sub-agents/](https://claudelog.com/mechanics/sub-agents/)
-- [claudelog.com/mechanics/split-role-sub-agents/](https://claudelog.com/mechanics/split-role-sub-agents/) (ultra think mode seems important here)
-- [claudelog.com/mechanics/custom-agents/](https://claudelog.com/mechanics/custom-agents/) (community managed agent best practices for creating your own agents)
+- [claudelog.com/mechanics/split-role-sub-agents/](https://claudelog.com/mechanics/split-role-sub-agents/)
+- [claudelog.com/mechanics/custom-agents/](https://claudelog.com/mechanics/custom-agents/)
 - [claudelog.com/mechanics/agent-engineering/](https://claudelog.com/mechanics/agent-engineering/)
 - [AgentDB](https://agentdb.ruv.io/) - memory management
+</examples>

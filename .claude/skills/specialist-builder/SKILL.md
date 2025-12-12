@@ -3,13 +3,34 @@ name: specialist-builder
 description: Use when user asks to "create an agent", "add a subagent", or needs guidance on agent frontmatter, triggering examples, system prompts, tools, or colors.
 ---
 
-# Specialist Builder
+<objective>
+Build specialist agents tailored to repository domains. Specialists are READ-ONLY subagents that return information to the main agent for implementation.
+</objective>
 
-Build specialist agents tailored to repository domains.
+<quick_start>
+1. Research domain via research-tools skill
+2. Extract repo patterns via repomix-extraction skill
+3. Confirm agent name with user
+4. Gather requirements (scope, pattern, skills, tools)
+5. Generate agent definition following frontmatter spec
+6. Auto-create companion maintenance skill
+</quick_start>
 
-For initial research this is a great researouce of specialist plugins (which ship agents with their commands and skills) (see their agent.md files):
-**https://github.com/wshobson/agents/tree/main/plugins**
+<success_criteria>
+- Agent has valid YAML frontmatter (name, description, model, color)
+- Description includes trigger keywords and ONE `<example>` block with variant syntax
+- Agent scope is focused (narrow specialists over broad ones)
+- Companion maintenance skill created
+</success_criteria>
 
+<constraints>
+- Specialists are READ-ONLY - they return information, main agent implements
+- Description MUST include WHEN to trigger (main agent uses this for dispatch)
+- Use ONE condensed `<example>` block with variant syntax (`|`) for trigger phrases
+- Name format: lowercase, numbers, hyphens only, 3-50 chars, start/end alphanumeric
+</constraints>
+
+<workflow>
 ## When Triggered
 
 Main agent calls curator with this skill when:
@@ -22,9 +43,9 @@ Main agent calls curator with this skill when:
 ### Inference Logic
 
 When curator invocation already specifies details, skip those questions:
-- Specialist name specified → skip name confirmation
-- Source directories specified → skip directory question
-- Specific domain described → skip option proposal, go direct to requirements
+- Specialist name specified -> skip name confirmation
+- Source directories specified -> skip directory question
+- Specific domain described -> skip option proposal, go direct to requirements
 
 ### 1. Research Phase (required)
 
@@ -146,7 +167,29 @@ If custom skill selected in requirements:
 "This specialist needs a custom skill. Would you like to define it now?"
 - If yes: use skill-development skill to create it
 - If no: note as TODO in agent file
+</workflow>
 
+<validation>
+## Agent File Checklist
+
+- [ ] `name`: lowercase-hyphens, 3-50 chars, alphanumeric start/end
+- [ ] `description`: includes trigger keywords + ONE `<example>` block
+- [ ] `model`: set (recommend `inherit`)
+- [ ] `color`: set based on agent type
+- [ ] `allowed-tools`: follows least privilege principle
+- [ ] System prompt: includes behavioral boundaries, methodologies, output format
+
+## Reference Files
+
+| File | Content |
+|------|---------|
+| `references/triggering-examples.md` | Example block anatomy and patterns |
+| `references/system-prompt-patterns.md` | Four agent pattern templates |
+| `examples/complete-agent-examples.md` | Full working agent examples |
+| `scripts/validate-agent.sh` | Validate agent file structure and content |
+</validation>
+
+<examples>
 ## Agent File Structure
 
 ### Complete Format
@@ -162,7 +205,7 @@ description: |
   </example>
 model: inherit
 color: blue
-allowed-tools: Read, Glob, Grep
+tools: Read, Glob, Grep
 skills: repomix-extraction, skill-name
 ---
 
@@ -183,12 +226,6 @@ You are [agent role description]...
 
 ### name (required)
 
-Agent identifier used for namespacing and invocation.
-
-**Format:** lowercase, numbers, hyphens only
-**Length:** 3-50 characters
-**Pattern:** Must start and end with alphanumeric
-
 **Good examples:**
 - `code-reviewer`
 - `test-generator`
@@ -198,15 +235,8 @@ Agent identifier used for namespacing and invocation.
 - `helper` (too generic)
 - `-agent-` (starts/ends with hyphen)
 - `my_agent` (underscores not allowed)
-- `ag` (too short)
 
 ### description (required)
-
-Defines when Claude should trigger this agent. **Most critical field.**
-
-**Must include:**
-1. Concise description with trigger keywords and responsibility scope
-2. ONE `<example>` block with variant syntax for compression
 
 **Format (condensed pattern):**
 ```yaml
@@ -218,8 +248,6 @@ description: |
   </example>
 ```
 
-**Variant syntax:** Use `|` to separate trigger phrase variants within a single example. This compresses multiple triggering scenarios into minimal context.
-
 **Example:**
 ```yaml
 description: |
@@ -230,28 +258,17 @@ description: |
   </example>
 ```
 
-**Do NOT include:**
-- Multiple `<example>` blocks (use variant syntax instead)
-- `<commentary>` blocks (description conveys reasoning)
-- Context or assistant response lines
-
-See `references/triggering-examples.md` for additional patterns.
-
 ### model (required)
 
-Which model the agent should use.
-
-**Options:**
-- `inherit` - Use same model as parent (recommended)
-- `sonnet` - Claude Sonnet (balanced)
-- `opus` - Claude Opus (most capable)
-- `haiku` - Claude Haiku (fast)
+| Option | Use |
+|--------|-----|
+| `inherit` | Same as parent (recommended) |
+| `sonnet` | Balanced |
+| `opus` | Most capable |
+| `haiku` | Fast |
 
 ### color (required)
 
-Visual identifier for agent in UI.
-
-**Guidelines:**
 | Color | Use For |
 |-------|---------|
 | blue/cyan | Analysis, review |
@@ -260,23 +277,16 @@ Visual identifier for agent in UI.
 | red | Critical, security |
 | magenta | Creative, generation |
 
-### allowed-tools (optional)
+### tools (optional)
 
-Restrict agent to specific tools. **Principle of least privilege.**
-
-**Common tool sets:**
-- Read-only analysis: `Read, Grep, Glob`
-- Code generation: `Read, Write, Grep`
-- Testing: `Read, Bash, Grep`
-- Full access: Omit field to inherit all
-
-### skills (optional)
-
-Skills to auto-load when agent starts. Comma-separated list.
+| Tool Set | Use Case |
+|----------|----------|
+| `Read, Grep, Glob` | Read-only analysis |
+| `Read, Write, Grep` | Code generation |
+| `Read, Bash, Grep` | Testing |
+| (omit) | Full access |
 
 ## System Prompt Patterns
-
-Four patterns for agent system prompts. See `references/system-prompt-patterns.md` for templates.
 
 | Pattern | Use When |
 |---------|----------|
@@ -284,46 +294,6 @@ Four patterns for agent system prompts. See `references/system-prompt-patterns.m
 | Generation | Creating code, tests, docs |
 | Validation | Checking, verifying, linting |
 | Orchestration | Multi-step workflows |
-
-## AI-Assisted Agent Generation
-
-For complex agents, use this prompt template:
-
-```json
-{
-  "request": "[USER DESCRIPTION]",
-  "requirements": {
-    "core_intent": "Extract primary purpose",
-    "persona": "Define expert role for domain",
-    "system_prompt": {
-      "behavioral_boundaries": true,
-      "specific_methodologies": true,
-      "edge_case_handling": true,
-      "output_format": true
-    },
-    "identifier": "lowercase-hyphens, 3-50 chars",
-    "description": "trigger keywords + ONE condensed example block",
-    "example": "ONE <example> with variant syntax (trigger1 | trigger2 | trigger3)"
-  }
-}
-```
-
-## Key Principles
-
-- Specialists are READ-ONLY - they return information, main agent implements
-- Description must include WHEN to trigger (main agent uses this for dispatch)
-- Keep scope focused - better to have multiple narrow specialists than one broad one
-- Skills determine what knowledge/capabilities the specialist has access to
-- Use ONE condensed `<example>` block with variant syntax (`|`) for trigger phrases
-
-## Reference Files
-
-| File | Content |
-|------|---------|
-| `references/triggering-examples.md` | Example block anatomy and patterns |
-| `references/system-prompt-patterns.md` | Four agent pattern templates |
-| `examples/complete-agent-examples.md` | Full working agent examples |
-| `scripts/validate-agent.sh` | Validate agent file structure and content |
 
 ## Agent-Skill Workflow Pattern
 
@@ -338,11 +308,20 @@ Example in agent file:
 
 When main agent asks to [prompt pattern], use the [skill-name] skill.
 ```
+</examples>
 
-**Why this works:**
-- Agent's `skills:` frontmatter lists skills to auto-load into context
-- Main agent triggers agent based on description examples
-- Agent body references skill by name - skill content already available
-- No duplication: skill owns workflow logic, agent owns triggering conditions
+<anti_patterns>
+| Anti-Pattern | Problem | Correct Approach |
+|--------------|---------|------------------|
+| Multiple `<example>` blocks | Wastes context | Use variant syntax with `\|` separator |
+| Generic name like `helper` | Unclear purpose | Specific domain names like `code-reviewer` |
+| Broad scope | Jack of all trades | Multiple narrow specialists |
+| Duplicate workflow in agent | Redundancy | Keep workflow in skill, agent references it |
+| Missing trigger keywords | Agent not dispatched | Description MUST include when to trigger |
+| Write access for analysis agents | Violates read-only | Use `allowed-tools: Read, Grep, Glob` |
 
-This keeps agent files lean and workflow logic centralized in skills.
+## Research Resource
+
+For initial research this is a great resource of specialist plugins (which ship agents with their commands and skills):
+**https://github.com/wshobson/agents/tree/main/plugins**
+</anti_patterns>
