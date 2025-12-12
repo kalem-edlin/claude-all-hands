@@ -27,11 +27,24 @@ jobs:
 
       - run: npm ci
 
-      - name: Bump version if already published
+      - name: Ensure version is higher than published
         run: |
           CURRENT=$(node -p "require('./package.json').version")
-          if npm view claude-all-hands@$CURRENT > /dev/null 2>&1; then
-            echo "Version $CURRENT exists, bumping patch..."
+          LATEST=$(npm view claude-all-hands version 2>/dev/null || echo "0.0.0")
+
+          # Compare versions using node
+          NEEDS_BUMP=$(node -e "
+            const current = '$CURRENT'.split('.').map(Number);
+            const latest = '$LATEST'.split('.').map(Number);
+            const needsBump = current[0] < latest[0] ||
+              (current[0] === latest[0] && current[1] < latest[1]) ||
+              (current[0] === latest[0] && current[1] === latest[1] && current[2] <= latest[2]);
+            console.log(needsBump ? 'true' : 'false');
+          ")
+
+          if [ "$NEEDS_BUMP" = "true" ]; then
+            echo "Local $CURRENT <= published $LATEST, bumping to patch above $LATEST..."
+            npm version $LATEST --no-git-tag-version --allow-same-version
             npm version patch --no-git-tag-version
             echo "BUMPED=true" >> $GITHUB_ENV
           fi

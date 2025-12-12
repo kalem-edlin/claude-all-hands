@@ -24,6 +24,10 @@
   ],
   "author": "kalem-edlin",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kalem-edlin/claude-all-hands"
+  },
   "publishConfig": {
     "access": "public"
   },
