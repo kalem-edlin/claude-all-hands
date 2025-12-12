@@ -8,7 +8,7 @@ description: |
   </example>
 skills: repomix-extraction
 tools: Read, Glob, Grep, Bash
-model: inherit
+model: Haiku 4.5
 color: green
 ---
 
