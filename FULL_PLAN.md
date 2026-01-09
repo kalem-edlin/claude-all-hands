@@ -866,7 +866,7 @@ steps:
     * Returns `user_addressed_questions` only when populated (questions user has answered)
     * Address the user_requested_changes in updated approach
   4: |
-    If available (not research agent) use repomix extraction skill to gather context relevant codebase files over areas of focus to generate approaches
+    If available (not research agent) gather relevant codebase files into context for areas of focus to inform approaches
   5: |
     Report key notes for all approaches to be aware of (relevant key technologies, stack, patterns, dependencies, known constraints / caveats, existing APIs etc) in notes
     * Include references to relevant documentation found in step 1
@@ -964,11 +964,11 @@ steps:
 | Agent | Skills |
 |-------|--------|
 | planner | (none) |
-| curator | repomix-extraction, research-tools |
+| curator | research-tools |
 | researcher | research-tools |
-| surveyor | repomix-extraction |
-| worker | repomix-extraction |
-| documentor | repomix-extraction |
+| surveyor | (none) |
+| worker | (none) |
+| documentor | (none) |
 
 ### **planner agent:**
 Expert solutions architect responsible for creating and modifying prompts and high-level plan context.
@@ -1055,7 +1055,7 @@ Agent for AI orchestration curation - agents, skills, commands, hooks.
   * `{ success: false, reason: string }` - unrecoverable failure
 
 **WORKFLOW STEPS:**
-  1. Use repomix to discover relevant code for the artifact
+  1. Discover relevant code patterns for the artifact
   2. Use research tools for best practices not in current codebase
   3. If clarifying questions arise: return them immediately for user input, then resume
   4. Implement the artifact (agent file, skill directory, etc.)
@@ -1083,7 +1083,7 @@ Agent with research tools skill for external knowledge gathering. Use when exter
 ---
 
 ### **surveyor:**
-Generic specialist for discovery when no domain-specific specialist exists. Use as fallback when main agent cannot confidently assign a segment to a specialist. Has repomix extraction skill for codebase analysis.
+Generic specialist for discovery when no domain-specific specialist exists. Use as fallback when main agent cannot confidently assign a segment to a specialist.
 
 ---
 
@@ -1167,7 +1167,6 @@ Agent for extracting documentation from implementation walkthroughs.
       * Front-matter: `resource_description` (required - summarizes key decisions, patterns, focus areas)
       * Front-matter: `relevant_files` (auto-populated by commit hook, NOT written by documentor)
       * Body: Full document content with inline file path references to codebase
-  * Uses repomix extraction skill to read relevant codebase files
   * Infers documentation structure based on codebase organization (no prescribed layout)
 
 ---

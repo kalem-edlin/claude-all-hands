@@ -10,6 +10,27 @@
     "BASH_MAX_TIMEOUT_MS": "3600000",
     "BASE_BRANCH": "main"
   },
+  "permissions": {
+    "allow": [
+      "Grep",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx repomix@latest:*)",
+      "Read(~/.claude-code-docs/docs/*)",
+      "Bash(.claude/envoy/envoy:*)",
+      "SlashCommand(/parallel-discovery:*)",
+      "SlashCommand(/plan:*)",
+      "SlashCommand(/plan-checkpoint:*)",
+      "SlashCommand(/parallel-orchestration:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": false,
   "hooks": {
     "SessionStart": [
       {
@@ -52,30 +73,14 @@
       }
     ]
   },
-  "enableAllProjectMcpServers": false,
-  "permissions": {
-    "allow": [
-      "Grep",
-      "Bash(git:*)",
-      "Bash(gh:*)",
-      "Bash(cat:*)",
-      "Bash(ls:*)",
-      "Bash(rg:*)",
-      "Bash(mkdir:*)",
-      "Bash(npx repomix@latest:*)",
-      "Read(~/.claude-code-docs/docs/*)",
-      "Bash(.claude/envoy/envoy:*)",
-      "SlashCommand(/parallel-discovery:*)",
-      "SlashCommand(/plan:*)",
-      "SlashCommand(/plan-checkpoint:*)",
-      "SlashCommand(/parallel-orchestration:*)"
-    ],
-    "deny": [],
-    "ask": []
-  },
   "statusLine": {
     "type": "command",
     "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/statusline.sh",
     "padding": 0
+  },
+  "enabledPlugins": {
+    "vtsls@claude-code-lsps": true,
+    "pyright@claude-code-lsps": true,
+    "vscode-langservers@claude-code-lsps": true
   }
 }
