@@ -1,88 +1,64 @@
 #!/usr/bin/env python3
-"""SessionStart hook: scan skills directories for missing/invalid SKILL.md files."""
-from __future__ import annotations
-
+"""Validate skill directories on startup."""
+import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
+
+SKILLS_DIR = Path(".claude/skills")
 
 
-def parse_frontmatter(content):
-    """Parse YAML frontmatter from content."""
+def parse_frontmatter(content: str) -> Optional[dict]:
+    """Parse YAML frontmatter from markdown file."""
     if not content.startswith("---"):
         return None
-    parts = content.split("---", 2)
-    if len(parts) < 3:
+    match = re.search(r"^---\n(.*?)\n---", content, re.DOTALL)
+    if not match:
         return None
-    result = {}
-    for line in parts[1].strip().split("\n"):
+    fm = {}
+    for line in match.group(1).split("\n"):
         if ":" in line:
-            key, _, value = line.partition(":")
-            result[key.strip()] = value.strip().strip('"').strip("'")
-    return result
-
-
-def validate_skill(skill_path):
-    """Validate a skill directory. Returns list of errors."""
-    errors = []
-    skill_md = skill_path / "SKILL.md"
-    name = skill_path.name
-
-    if not skill_md.exists():
-        errors.append(f"{name}: missing SKILL.md")
-        return errors
-
-    try:
-        content = skill_md.read_text()
-    except Exception as e:
-        errors.append(f"{name}: error reading SKILL.md - {e}")
-        return errors
-
-    fm = parse_frontmatter(content)
-    if fm is None:
-        errors.append(f"{name}: missing or invalid frontmatter")
-        return errors
-
-    # Validate name
-    if "name" not in fm:
-        errors.append(f"{name}: missing 'name' field")
-    else:
-        n = fm["name"]
-        if len(n) > 64:
-            errors.append(f"{name}: 'name' exceeds 64 chars ({len(n)})")
-        if not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", n):
-            errors.append(f"{name}: 'name' must be kebab-case")
-
-    # Validate description
-    if "description" not in fm:
-        errors.append(f"{name}: missing 'description' field")
-    elif len(fm["description"]) > 300:
-        errors.append(f"{name}: 'description' exceeds 300 chars")
-
-    return errors
+            k, v = line.split(":", 1)
+            fm[k.strip()] = v.strip()
+    return fm
 
 
 def main():
-    # Use CLAUDE_PROJECT_DIR env var to find .claude directory
-    import os
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
-    if not project_dir:
-        return
-    skills_dir = Path(project_dir) / ".claude" / "skills"
+    errors = []
 
-    if not skills_dir.exists():
-        return
+    if not SKILLS_DIR.exists():
+        sys.exit(0)
 
-    all_errors = []
-    for skill_path in skills_dir.iterdir():
-        if skill_path.is_dir() and not skill_path.name.startswith("_"):
-            errors = validate_skill(skill_path)
-            all_errors.extend(errors)
+    for skill_dir in SKILLS_DIR.iterdir():
+        if not skill_dir.is_dir():
+            continue
 
-    if all_errors:
-        print("⚠️ Skill validation warnings:", file=sys.stderr)
-        for error in all_errors:
-            print(f"  • {error}", file=sys.stderr)
+        skill_file = skill_dir / "SKILL.md"
+        name = skill_dir.name
+
+        if not skill_file.exists():
+            errors.append(f"⚠️ skill/{name}/: missing SKILL.md")
+            continue
+
+        content = skill_file.read_text()
+        fm = parse_frontmatter(content)
+
+        if not fm:
+            errors.append(f"⚠️ skill/{name}/SKILL.md: missing frontmatter")
+            continue
+
+        if "name" not in fm:
+            errors.append(f"⚠️ skill/{name}/SKILL.md: missing name")
+        elif fm["name"] != name:
+            errors.append(f"⚠️ skill/{name}/SKILL.md: name '{fm['name']}' doesn't match directory")
+
+        if "description" not in fm:
+            errors.append(f"⚠️ skill/{name}/SKILL.md: missing description")
+
+    if errors:
+        print(json.dumps({"systemMessage": "\n".join(errors)}))
+    sys.exit(0)
 
 
 if __name__ == "__main__":

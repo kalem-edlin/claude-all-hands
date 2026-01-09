@@ -1,0 +1,12 @@
+# Python venv (legacy)
+.venv/
+
+# Node.js dependencies
+node_modules/
+
+# TypeScript build output
+dist/
+
+# Knowledge index (USearch) and model cache
+.knowledge/
+

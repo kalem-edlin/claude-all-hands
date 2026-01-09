@@ -1,9 +1,8 @@
 #!/bin/bash
-# claude-envoy: CLI for agent-scoped external tool access
+# claude-envoy: CLI for agent-scoped external tool access (TypeScript)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-VENV_DIR="$SCRIPT_DIR/.venv"
 
 # Load .env if exists
 if [ -f "$PROJECT_DIR/.env" ]; then
@@ -12,19 +11,17 @@ if [ -f "$PROJECT_DIR/.env" ]; then
     set +a
 fi
 
-# Auto-create venv if missing
-if [ ! -d "$VENV_DIR" ]; then
-    python3 -m venv "$VENV_DIR"
-    "$VENV_DIR/bin/pip" install -q -r "$SCRIPT_DIR/requirements.txt"
-    cp "$SCRIPT_DIR/requirements.txt" "$VENV_DIR/.requirements.txt"
+# Auto-install if node_modules missing
+if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
+    npm install --prefix "$SCRIPT_DIR" --silent 2>/dev/null
+    cp "$SCRIPT_DIR/package.json" "$SCRIPT_DIR/node_modules/.package.json.cache" 2>/dev/null
 fi
 
-# Reinstall if requirements.txt changed
-if ! cmp -s "$SCRIPT_DIR/requirements.txt" "$VENV_DIR/.requirements.txt" 2>/dev/null; then
-    "$VENV_DIR/bin/pip" install -q -r "$SCRIPT_DIR/requirements.txt"
-    cp "$SCRIPT_DIR/requirements.txt" "$VENV_DIR/.requirements.txt"
+# Reinstall if package.json changed
+if ! cmp -s "$SCRIPT_DIR/package.json" "$SCRIPT_DIR/node_modules/.package.json.cache" 2>/dev/null; then
+    npm install --prefix "$SCRIPT_DIR" --silent 2>/dev/null
+    cp "$SCRIPT_DIR/package.json" "$SCRIPT_DIR/node_modules/.package.json.cache" 2>/dev/null
 fi
 
-# Suppress Python warnings (urllib3, deprecation, etc)
-export PYTHONWARNINGS="ignore"
-exec "$VENV_DIR/bin/python" "$SCRIPT_DIR/envoy.py" "$@"
+# Use tsx for direct TypeScript execution (no compile step needed)
+exec "$SCRIPT_DIR/node_modules/.bin/tsx" "$SCRIPT_DIR/src/cli.ts" "$@"

@@ -1,10 +1,10 @@
 ---
 name: research-tools
-description: Use when need to "search the web", "research [topic]", "extract URL content", or "find sources". Provides web search (Tavily), deep research (Perplexity), and X/Twitter insights (Grok). Only for curator/researcher agents.
+description: External research via envoy commands. Use for "search the web", "research [topic]", "extract URL content", "find sources". Provides Tavily (search/extract), Perplexity (deep research), Grok (X/Twitter). Curator/researcher agents only.
 ---
 
 <objective>
-External research capability for curator and researcher agents. Provides web search, deep research with citations, and real-time social signals via envoy commands.
+External research capability for curator/researcher agents. Web search, deep research with citations, and real-time social signals via envoy commands.
 </objective>
 
 <quick_start>
@@ -20,71 +20,66 @@ envoy tavily extract "url1" "url2"
 ```
 </quick_start>
 
-<success_criteria>
-- JSON response with `status: success` and `data` containing findings
-- Sources/citations included for synthesis queries
-- Content extracted for known URLs
-</success_criteria>
-
 <constraints>
 - Only curator/researcher agents may use these tools
 - GitHub content: use `gh` CLI instead of extract
 - All commands return JSON - parse `data.content` or `data.results`
+- Use TODAY's date for time-sensitive queries: `date +%Y-%m-%d`
 </constraints>
 
 <workflow>
-### 1. Scope the Query
-- What specifically needs to be learned?
-- What will the findings be used for?
-- What level of depth is needed?
+<step name="scope">
+Clarify: What to learn? What for? Depth needed?
+</step>
 
-### 2. Choose Approach
-
+<step name="choose_tool">
 | Need | Tool | Cost |
 |------|------|------|
-| Broad question, need synthesis | `perplexity research` | High |
+| Broad question, synthesis | `perplexity research` | High |
 | Synthesis + real-time validation | `perplexity research --grok-challenge` | Higher |
 | X/Twitter community insights | `xai search` | Medium |
 | Find sources, discover URLs | `tavily search` | Medium |
-| Get full content from known URL | `tavily extract` | Low |
+| Full content from known URL | `tavily extract` | Low |
+</step>
 
-### 3. Process Results
+<step name="process_results">
 All tools return JSON. Parse `data.content` or `data.results` for findings.
+</step>
 </workflow>
 
 <examples>
-### Command Reference
+<command_reference>
 ```bash
-# Deep research with citations (Perplexity)
+# Perplexity (deep research)
 envoy perplexity research "query"
-envoy perplexity research "query" --grok-challenge  # validate via X search
+envoy perplexity research "query" --grok-challenge
 
-# X/Twitter search (Grok)
+# Grok (X/Twitter)
 envoy xai search "query"
-envoy xai search "query" --results-to-challenge "findings"  # challenger mode
+envoy xai search "query" --results-to-challenge "findings"
 
-# Web search (Tavily)
+# Tavily (web search/extract)
 envoy tavily search "query"
 envoy tavily search "query" --max-results 10
-
-# Extract content from URLs (Tavily)
 envoy tavily extract "url1" "url2"
 
-# GitHub content (use gh CLI)
+# GitHub (use gh CLI)
 gh api repos/{owner}/{repo}/contents/{path}
 gh issue view {number} --repo {owner}/{repo}
 ```
+</command_reference>
 
-### Decision Tree
+<decision_tree>
 ```
 Need information?
-├─ Know the exact URL? → tavily extract
+├─ Know exact URL? → tavily extract
 ├─ Need to find sources? → tavily search → extract promising URLs
 ├─ Tech research for planning? → perplexity research --grok-challenge
 └─ Quick answer, no validation? → perplexity research
 ```
+</decision_tree>
 
-### Output Format
+<output_format>
 ```markdown
 ## Research: [Topic]
 
@@ -92,16 +87,23 @@ Need information?
 - Finding with context
 
 ### Sources
-- [Source URL] - what was relevant
+- [URL] - relevance
 
 ### Recommendations
-What to do based on findings.
+Actions based on findings.
 ```
+</output_format>
 </examples>
 
 <anti_patterns>
-- Using extract for GitHub content (use `gh` CLI instead)
+- Using extract for GitHub content (use `gh` CLI)
 - Skipping scope clarification before research
 - Not parsing JSON response properly
-- Using research tools from non-curator/researcher agents
+- Using from non-curator/researcher agents
 </anti_patterns>
+
+<success_criteria>
+- JSON response: `status: success` with `data` containing findings
+- Sources/citations included for synthesis queries
+- Content extracted for known URLs
+</success_criteria>
