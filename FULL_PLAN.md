@@ -475,8 +475,20 @@ logs: |
     * Delegate to **documentor agent** with **audit-workflow**
     * INPUTS: `{ mode: "audit", feature_branch: <current_branch> }`
     * OUTPUTS: `{ success: true }`
-9.  Call `envoy plan complete` to generate summary, create PR, and mark plan as completed
-10. Call /whats-next command
+9. Pre-PR Review - parallel agents (see Phase 14):
+    * Delegate in PARALLEL:
+        a) **curator agent** with **pre-pr-review** workflow
+           * INPUTS: `{ feature_branch: <current_branch> }`
+           * OUTPUTS: `{ recommendations: [...], has_changes: boolean }`
+           * Reviews diff for orchestration improvements: new deps → specialist updates, new patterns → skills/protocols
+        b) **code-simplifier agent** with **simplification-review** workflow
+           * INPUTS: `{ feature_branch: <current_branch> }`
+           * OUTPUTS: `{ simplifications: [...], has_changes: boolean }`
+           * Reviews diff for complexity reduction: over-abstraction, dead code, redundant patterns
+    * If any changes: user decides (I)mplement / (D)efer / (S)kip per item
+    * If implement: respective agent makes changes, commit before PR
+10. Call `envoy plan complete` to generate summary, create PR, and mark plan as completed
+11. Call /whats-next command
 
 ### **/whats-next**
 1. Call `envoy plan check`

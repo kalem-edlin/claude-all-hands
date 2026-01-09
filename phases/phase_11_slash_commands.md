@@ -120,8 +120,18 @@ Command files live in `.claude/commands/<command_name>.md`
     * Delegate to **documentor agent** with **audit-workflow**
     * INPUTS: `{ mode: "audit", feature_branch: <current_branch> }`
     * OUTPUTS: `{ success: true }`
-9. Call `envoy plan complete` to generate summary, create PR, and mark plan as completed
-10. Call /whats-next command
+9. Pre-PR Review - parallel agents (Phase 14):
+    * Delegate in PARALLEL:
+        a) **curator agent** with **pre-pr-review** workflow
+           * INPUTS: `{ feature_branch: <current_branch> }`
+           * OUTPUTS: `{ recommendations: [...], has_changes: boolean }`
+        b) **code-simplifier agent** with **simplification-review** workflow
+           * INPUTS: `{ feature_branch: <current_branch> }`
+           * OUTPUTS: `{ simplifications: [...], has_changes: boolean }`
+    * If any changes: user decides (I)mplement / (D)efer / (S)kip per item
+    * If implement: respective agent makes changes, commit before PR
+10. Call `envoy plan complete` to generate summary, create PR, and mark plan as completed
+11. Call /whats-next command
 
 ---
 
@@ -315,6 +325,9 @@ Command files live in `.claude/commands/<command_name>.md`
 
 ### All Prior Phases
 Commands orchestrate all envoy commands from Phases 1-8 and delegate to agents from Phase 10 using protocols from Phase 9.
+
+### Curator Pre-PR (Phase 14)
+Phase 14 defines the curator consultation step before PR creation. Curators review feature diffs for orchestration improvement opportunities (agents, skills, hooks, commands, protocols).
 
 ### Hooks (Phase 12)
 Phase 12 will add enforcement hooks that:
