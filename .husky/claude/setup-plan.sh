@@ -2,7 +2,7 @@
 # Create plan directory structure for new branches
 # Called from post-checkout hook
 
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/claude/common.sh"
 
 # post-checkout receives: $1=prev_HEAD, $2=new_HEAD, $3=branch_flag (1=branch checkout)
 prev_ref="$1"

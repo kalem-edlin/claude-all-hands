@@ -2,7 +2,7 @@
 # Clean up orphaned plan directories for branches that no longer exist
 # Called from Claude startup hook (not post-merge)
 
-. "$(dirname "$0")/common.sh"
+. "$(dirname "$0")/claude/common.sh"
 
 PLANS_DIR=".claude/plans"
 
