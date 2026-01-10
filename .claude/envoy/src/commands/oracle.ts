@@ -164,6 +164,42 @@ abstract class OracleCommand extends BaseCommand {
       metadata: { retries: result.retries, duration_ms: durationMs },
     };
   }
+
+  protected async callAndParse(
+    endpoint: string,
+    contents: string | ContentPart[],
+    usePro: boolean = false
+  ): Promise<
+    | { error: CommandResult; parsed?: never; metadata?: never }
+    | { error?: never; parsed: Record<string, unknown>; metadata: Record<string, unknown> }
+  > {
+    const { result, durationMs } = await this.callProvider(contents, endpoint, usePro);
+
+    if (!result.success) {
+      const failedResult = result as { success: false; error: string; retries: number; fallback_suggestion?: string };
+      return {
+        error: {
+          status: "error",
+          error: {
+            type: failedResult.error,
+            message: "LLM API unavailable after retries",
+            suggestion: failedResult.fallback_suggestion,
+          },
+          metadata: { retries: failedResult.retries, duration_ms: durationMs },
+        },
+      };
+    }
+
+    const parsed = parseJsonResponse(result.data.text);
+    const metadata = {
+      provider: this.provider.config.name,
+      command: `oracle ${endpoint}`,
+      duration_ms: durationMs,
+      retries: result.retries,
+    };
+
+    return { parsed, metadata };
+  }
 }
 
 // ============================================================================
@@ -208,7 +244,8 @@ class OracleAskCommand extends OracleCommand {
     const { result, durationMs } = await this.callProvider(prompt, "ask");
 
     if (!result.success) {
-      return this.handleError(result, durationMs);
+      const failedResult = result as { success: false; error: string; retries: number; fallback_suggestion?: string };
+      return this.handleError(failedResult, durationMs);
     }
 
     return this.success(
@@ -313,19 +350,10 @@ ${additional}
 
 Respond with JSON only.`;
 
-    const { result, durationMs } = await this.callProvider(fullPrompt, "validate");
+    const { error, parsed, metadata } = await this.callAndParse("validate", fullPrompt);
+    if (error) return error;
 
-    if (!result.success) {
-      return this.handleError(result, durationMs);
-    }
-
-    const parsed = parseJsonResponse(result.data.text);
-    return this.success(parsed, {
-      provider: this.provider.config.name,
-      command: "oracle validate",
-      duration_ms: durationMs,
-      retries: result.retries,
-    });
+    return this.success(parsed, metadata);
   }
 }
 
@@ -401,19 +429,10 @@ ${additional}
 
 Respond with JSON only.`;
 
-    const { result, durationMs } = await this.callProvider(fullPrompt, "architect");
+    const { error, parsed, metadata } = await this.callAndParse("architect", fullPrompt);
+    if (error) return error;
 
-    if (!result.success) {
-      return this.handleError(result, durationMs);
-    }
-
-    const parsed = parseJsonResponse(result.data.text);
-    return this.success(parsed, {
-      provider: this.provider.config.name,
-      command: "oracle architect",
-      duration_ms: durationMs,
-      retries: result.retries,
-    });
+    return this.success(parsed, metadata);
   }
 }
 
@@ -516,13 +535,9 @@ Review the plan and respond with JSON only.`;
 
     contentParts.unshift(fullPrompt);
 
-    const { result, durationMs } = await this.callProvider(contentParts, "audit", true);
+    const { error, parsed, metadata } = await this.callAndParse("audit", contentParts, true);
+    if (error) return error;
 
-    if (!result.success) {
-      return this.handleError(result, durationMs);
-    }
-
-    const parsed = parseJsonResponse(result.data.text);
     const questions = (parsed.clarifying_questions as string[]) ?? [];
 
     if (questions.length > 0) {
@@ -557,12 +572,7 @@ Review the plan and respond with JSON only.`;
           answered_questions: feedback.data.questions,
           suggested_edits: parsed.suggested_edits,
         },
-        {
-          provider: this.provider.config.name,
-          command: "oracle audit",
-          duration_ms: durationMs,
-          retries: result.retries,
-        }
+        metadata
       );
     }
 
@@ -580,12 +590,7 @@ Review the plan and respond with JSON only.`;
         thoughts: parsed.thoughts,
         suggested_edits: parsed.suggested_edits,
       },
-      {
-        provider: this.provider.config.name,
-        command: "oracle audit",
-        duration_ms: durationMs,
-        retries: result.retries,
-      }
+      metadata
     );
   }
 }
@@ -697,13 +702,10 @@ ${commits}
 
 Review and respond with JSON only.`;
 
-    const { result, durationMs } = await this.callProvider(fullPrompt, "review", true);
+    const { error, parsed, metadata } = await this.callAndParse("review", fullPrompt, true);
+    if (error) return error;
 
-    if (!result.success) {
-      return this.handleError(result, durationMs);
-    }
-
-    const parsed = parseJsonResponse(result.data.text);
+    const promptMeta = { ...metadata, prompt_id: promptId };
     const questions = (parsed.clarifying_questions as string[]) ?? [];
 
     if (questions.length > 0) {
@@ -740,13 +742,7 @@ Review and respond with JSON only.`;
           answered_questions: feedback.data.questions,
           suggested_changes: parsed.suggested_changes,
         },
-        {
-          provider: this.provider.config.name,
-          command: "oracle review",
-          duration_ms: durationMs,
-          retries: result.retries,
-          prompt_id: promptId,
-        }
+        promptMeta
       );
     }
 
@@ -768,13 +764,7 @@ Review and respond with JSON only.`;
         thoughts: parsed.thoughts,
         suggested_changes: parsed.suggested_changes,
       },
-      {
-        provider: this.provider.config.name,
-        command: "oracle review",
-        duration_ms: durationMs,
-        retries: result.retries,
-        prompt_id: promptId,
-      }
+      promptMeta
     );
   }
 
@@ -832,13 +822,10 @@ ${commits}
 
 Review and respond with JSON only.`;
 
-    const { result, durationMs } = await this.callProvider(fullPrompt, "review", true);
+    const { error, parsed, metadata } = await this.callAndParse("review", fullPrompt, true);
+    if (error) return error;
 
-    if (!result.success) {
-      return this.handleError(result, durationMs);
-    }
-
-    const parsed = parseJsonResponse(result.data.text);
+    const fullMeta = { ...metadata, command: "oracle review --full" };
     const questions = (parsed.clarifying_questions as string[]) ?? [];
 
     if (questions.length > 0) {
@@ -873,12 +860,7 @@ Review and respond with JSON only.`;
           answered_questions: feedback.data.questions,
           suggested_changes: parsed.suggested_changes,
         },
-        {
-          provider: this.provider.config.name,
-          command: "oracle review --full",
-          duration_ms: durationMs,
-          retries: result.retries,
-        }
+        fullMeta
       );
     }
 
@@ -896,12 +878,7 @@ Review and respond with JSON only.`;
         thoughts: parsed.thoughts,
         suggested_changes: parsed.suggested_changes,
       },
-      {
-        provider: this.provider.config.name,
-        command: "oracle review --full",
-        duration_ms: durationMs,
-        retries: result.retries,
-      }
+      fullMeta
     );
   }
 }
