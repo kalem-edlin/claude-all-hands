@@ -21,6 +21,15 @@ envoy <group> --help
 | `tavily extract` | Extract full content from URLs |
 | `xai search` | X/Twitter search for community opinions, alternatives, discussions |
 
+### Context7 (External Documentation)
+
+| Tool | Use Case |
+|------|----------|
+| `context7 search` | Find library by name, returns IDs for context command |
+| `context7 context` | Get documentation for known library (use search first) |
+
+*Flow: search → get library ID → context with query*
+
 ### Vertex (Gemini)
 
 | Tool | Use Case |
@@ -44,6 +53,7 @@ envoy <group> --help
 - Pre-synthesized findings → `perplexity research`
 - Raw sources for processing → `tavily search` → `tavily extract`
 - Community opinions/alternatives → `xai search` (can build on previous findings with `--context`)
+- Library documentation → `context7 search <lib>` → `context7 context <id> <query>`
 
 **Vertex:**
 - Arbitrary Gemini query → `vertex ask`
@@ -63,6 +73,7 @@ These tools read files directly and pass to external LLMs. Claude only receives 
 | `TAVILY_API_KEY` | tavily | Tavily API key |
 | `VERTEX_API_KEY` | vertex | Google AI API key (Vertex Express) |
 | `X_AI_API_KEY` | xai | xAI Grok API key |
+| `CONTEXT7_API_KEY` | context7 | Context7 API key (upstash.com) |
 | `ENVOY_TIMEOUT_MS` | optional | Global timeout (default: 120000) |
 
 ## Discovery
