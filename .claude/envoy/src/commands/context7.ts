@@ -8,7 +8,37 @@ import { Command } from "commander";
 import { BaseCommand, type CommandResult } from "./base.js";
 import { Context7, Context7Error, type Library } from "@upstash/context7-sdk";
 
-class Context7SearchCommand extends BaseCommand {
+/** Shared base for Context7 commands - DRY for auth + error handling */
+abstract class Context7BaseCommand extends BaseCommand {
+  protected requireApiKey(): CommandResult | Context7 {
+    const apiKey = process.env.CONTEXT7_API_KEY;
+    if (!apiKey) {
+      return this.error("auth_error", "CONTEXT7_API_KEY not set");
+    }
+    return new Context7({ apiKey });
+  }
+
+  protected async withTimeout<T>(fn: () => Promise<T>): Promise<[T, number]> {
+    const start = performance.now();
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), this.timeoutMs)
+    );
+    const result = await Promise.race([fn(), timeout]);
+    return [result, Math.round(performance.now() - start)];
+  }
+
+  protected handleError(e: unknown, extraHint?: string): CommandResult {
+    if (e instanceof Context7Error) {
+      return this.error("api_error", e.message, extraHint);
+    }
+    if (e instanceof Error && e.message.includes("timeout")) {
+      return this.error("timeout", `Request timed out after ${this.timeoutMs}ms`);
+    }
+    return this.error("api_error", e instanceof Error ? e.message : String(e));
+  }
+}
+
+class Context7SearchCommand extends Context7BaseCommand {
   readonly name = "search";
   readonly description = "Search for libraries by name, returns IDs for context command";
 
@@ -20,22 +50,22 @@ class Context7SearchCommand extends BaseCommand {
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.CONTEXT7_API_KEY;
-    if (!apiKey) {
-      return this.error("auth_error", "CONTEXT7_API_KEY not set");
-    }
+    const clientOrError = this.requireApiKey();
+    if ("status" in clientOrError) return clientOrError;
 
     const library = args.library as string;
     const query = (args.query as string) ?? `How to use ${library}`;
     const limit = (args.limit as number) ?? 5;
 
     try {
-      const client = new Context7({ apiKey });
-      const [libraries, durationMs] = await this.timedExecute(() =>
-        client.searchLibrary(query, library)
+      const [libraries, durationMs] = await this.withTimeout(() =>
+        clientOrError.searchLibrary(query, library)
       );
 
-      // Slim output for LLM consumption - only what's needed for decisions
+      if (!Array.isArray(libraries)) {
+        return this.error("api_error", "Unexpected response format from Context7");
+      }
+
       const results = libraries.slice(0, limit).map((lib: Library) => ({
         id: lib.id, // Required for context command
         name: lib.name,
@@ -51,6 +81,9 @@ class Context7SearchCommand extends BaseCommand {
           usage: results.length > 0
             ? `Use: envoy context7 context "${results[0].id}" "your question"`
             : undefined,
+          ...(results.length === 0 && {
+            suggestion: "Library not found. Try different search term or library may not be indexed.",
+          }),
         },
         {
           result_count: results.length,
@@ -59,18 +92,12 @@ class Context7SearchCommand extends BaseCommand {
         }
       );
     } catch (e) {
-      if (e instanceof Context7Error) {
-        return this.error("api_error", e.message);
-      }
-      if (e instanceof Error && e.message.includes("timeout")) {
-        return this.error("timeout", `Request timed out after ${this.timeoutMs}ms`);
-      }
-      return this.error("api_error", e instanceof Error ? e.message : String(e));
+      return this.handleError(e);
     }
   }
 }
 
-class Context7ContextCommand extends BaseCommand {
+class Context7ContextCommand extends Context7BaseCommand {
   readonly name = "context";
   readonly description = "Get documentation context for a known library (use search first)";
 
@@ -82,22 +109,18 @@ class Context7ContextCommand extends BaseCommand {
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.CONTEXT7_API_KEY;
-    if (!apiKey) {
-      return this.error("auth_error", "CONTEXT7_API_KEY not set");
-    }
+    const clientOrError = this.requireApiKey();
+    if ("status" in clientOrError) return clientOrError;
 
     const libraryId = args.libraryId as string;
     const query = args.query as string;
     const useText = args.text as boolean;
 
     try {
-      const client = new Context7({ apiKey });
-
       if (useText) {
         // Plain text mode - directly usable in LLM prompts
-        const [content, durationMs] = await this.timedExecute(() =>
-          client.getContext(query, libraryId, { type: "txt" })
+        const [content, durationMs] = await this.withTimeout(() =>
+          clientOrError.getContext(query, libraryId, { type: "txt" })
         );
 
         return this.success(
@@ -115,9 +138,13 @@ class Context7ContextCommand extends BaseCommand {
       }
 
       // JSON mode - structured docs
-      const [docs, durationMs] = await this.timedExecute(() =>
-        client.getContext(query, libraryId, { type: "json" })
+      const [docs, durationMs] = await this.withTimeout(() =>
+        clientOrError.getContext(query, libraryId, { type: "json" })
       );
+
+      if (!Array.isArray(docs)) {
+        return this.error("api_error", "Unexpected response format from Context7");
+      }
 
       const documentation = docs.map((doc) => ({
         title: doc.title,
@@ -138,17 +165,7 @@ class Context7ContextCommand extends BaseCommand {
         }
       );
     } catch (e) {
-      if (e instanceof Context7Error) {
-        return this.error(
-          "api_error",
-          e.message,
-          "Ensure libraryId is valid (from search results)"
-        );
-      }
-      if (e instanceof Error && e.message.includes("timeout")) {
-        return this.error("timeout", `Request timed out after ${this.timeoutMs}ms`);
-      }
-      return this.error("api_error", e instanceof Error ? e.message : String(e));
+      return this.handleError(e, "Ensure libraryId is valid (from search results)");
     }
   }
 }

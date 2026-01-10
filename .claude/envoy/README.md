@@ -21,15 +21,14 @@ CLI for agent-scoped external tool access. Keeps file contents OUT of Claude's c
 | `tavily extract` | Extract full content from URLs |
 | `xai search` | X/Twitter search for community opinions, alternatives, discussions |
 
-### NIA (External Documentation & Package Search)
+### Context7 (External Documentation)
 
 | Tool | Use Case |
 |------|----------|
-| `nia search` | Universal search across indexed repos, docs, packages |
-| `nia package` | Search inside package source code (npm, pypi, crates, go) |
-| `nia research` | AI-powered deep research (falls back to perplexity) |
+| `context7 search` | Find library by name, returns IDs for context command |
+| `context7 context` | Get documentation for known library (use search first) |
 
-*If NIA doesn't have a repo indexed, fall back to `gh api repos/{owner}/{repo}/contents/{path}`*
+*Flow: search → get library ID → context with query*
 
 ### Vertex (Gemini)
 
@@ -54,9 +53,7 @@ CLI for agent-scoped external tool access. Keeps file contents OUT of Claude's c
 - Pre-synthesized findings → `perplexity research`
 - Raw sources for processing → `tavily search` → `tavily extract`
 - Community opinions/alternatives → `xai search` (can build on previous findings with `--context`)
-- Search inside package source code → `nia package <pkg> <query> --registry npm|pypi|crates|go`
-- Search indexed repos/docs → `nia search` (fallback: `gh api` for unindexed repos)
-- Implementation patterns research → `nia research` (fallback: perplexity)
+- Library documentation → `context7 search <lib>` → `context7 context <id> <query>`
 
 **Vertex:**
 - Arbitrary Gemini query → `vertex ask`
@@ -76,9 +73,8 @@ These tools read files directly and pass to external LLMs. Claude only receives 
 | `TAVILY_API_KEY` | tavily | Tavily API key |
 | `VERTEX_API_KEY` | vertex | Google AI API key (Vertex Express) |
 | `X_AI_API_KEY` | xai | xAI Grok API key |
-| `NIA_API_KEY` | nia | NIA API key (trynia.ai) |
+| `CONTEXT7_API_KEY` | context7 | Context7 API key (upstash.com) |
 | `ENVOY_TIMEOUT_MS` | optional | Global timeout (default: 120000) |
-| `NIA_TIMEOUT_MS` | optional | NIA deep research timeout (default: 300000) |
 
 ## Discovery
 
