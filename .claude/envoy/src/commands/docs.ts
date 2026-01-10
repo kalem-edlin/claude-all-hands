@@ -386,7 +386,7 @@ class ValidateCommand extends BaseCommand {
       }
 
       // Placeholder hash detection
-      const placeholderPattern = /\[ref:[^\]]+:(abc|123|000|hash|test)[a-f0-9]*\]/gi;
+const placeholderPattern = /\[ref:[^\]]+:(abc123[0-9]?|123456[0-9]?|000000[0-9]?|hash[a-f0-9]{0,4}|test[a-f0-9]{0,4})\]/gi;
       const placeholderMatches = content.match(placeholderPattern);
       if (placeholderMatches) {
         placeholderErrors.push({
