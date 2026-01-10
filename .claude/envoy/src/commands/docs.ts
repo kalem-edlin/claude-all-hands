@@ -264,13 +264,48 @@ class ValidateCommand extends BaseCommand {
 
     const mdFiles = findMarkdownFiles(absoluteDocsPath);
 
-    // Validate front matter for all markdown files
+    // Group all issues by doc file for easy delegation to documentation-writers
+    interface DocFileIssues {
+      stale: Array<{
+        reference: string;
+        file_path: string;
+        symbol_name: string | null;
+        stored_hash: string;
+        current_hash: string;
+        ref_type: "symbol" | "file-only";
+      }>;
+      invalid: Array<{
+        reference: string;
+        reason: string;
+      }>;
+      frontmatter_error: string | null;
+      placeholder_errors: Array<string>;
+      inline_code_block_count: number;
+      has_capability_list_warning: boolean;
+    }
+
+    const byDocFile: Record<string, DocFileIssues> = {};
+
+    const getOrCreateDocEntry = (docFile: string): DocFileIssues => {
+      if (!byDocFile[docFile]) {
+        byDocFile[docFile] = {
+          stale: [],
+          invalid: [],
+          frontmatter_error: null,
+          placeholder_errors: [],
+          inline_code_block_count: 0,
+          has_capability_list_warning: false,
+        };
+      }
+      return byDocFile[docFile];
+    };
+
+    // Legacy flat arrays for backward compat
     const frontmatterErrors: Array<{
       doc_file: string;
       reason: string;
     }> = [];
 
-    // Placeholder hash detection
     const placeholderErrors: Array<{
       doc_file: string;
       count: number;
@@ -278,14 +313,12 @@ class ValidateCommand extends BaseCommand {
       reason: string;
     }> = [];
 
-    // Inline code block detection
     const inlineCodeErrors: Array<{
       doc_file: string;
       block_count: number;
       reason: string;
     }> = [];
 
-    // Capability list detection (warnings)
     const capabilityListWarnings: Array<{
       doc_file: string;
       reason: string;
@@ -297,10 +330,9 @@ class ValidateCommand extends BaseCommand {
 
       // Check for front matter block
       if (!content.startsWith("---")) {
-        frontmatterErrors.push({
-          doc_file: relPath,
-          reason: "Missing front matter (file must start with ---)",
-        });
+        const reason = "Missing front matter (file must start with ---)";
+        frontmatterErrors.push({ doc_file: relPath, reason });
+        getOrCreateDocEntry(relPath).frontmatter_error = reason;
         continue;
       }
 
@@ -309,31 +341,27 @@ class ValidateCommand extends BaseCommand {
 
         // Check for required description field
         if (!parsed.data.description || typeof parsed.data.description !== "string") {
-          frontmatterErrors.push({
-            doc_file: relPath,
-            reason: "Missing or invalid 'description' field in front matter",
-          });
+          const reason = "Missing or invalid 'description' field in front matter";
+          frontmatterErrors.push({ doc_file: relPath, reason });
+          getOrCreateDocEntry(relPath).frontmatter_error = reason;
         } else if (parsed.data.description.trim() === "") {
-          frontmatterErrors.push({
-            doc_file: relPath,
-            reason: "Empty 'description' field in front matter",
-          });
+          const reason = "Empty 'description' field in front matter";
+          frontmatterErrors.push({ doc_file: relPath, reason });
+          getOrCreateDocEntry(relPath).frontmatter_error = reason;
         }
 
         // Validate relevant_files if present
         if (parsed.data.relevant_files !== undefined) {
           if (!Array.isArray(parsed.data.relevant_files)) {
-            frontmatterErrors.push({
-              doc_file: relPath,
-              reason: "'relevant_files' must be an array",
-            });
+            const reason = "'relevant_files' must be an array";
+            frontmatterErrors.push({ doc_file: relPath, reason });
+            getOrCreateDocEntry(relPath).frontmatter_error = reason;
           }
         }
       } catch {
-        frontmatterErrors.push({
-          doc_file: relPath,
-          reason: "Invalid front matter syntax",
-        });
+        const reason = "Invalid front matter syntax";
+        frontmatterErrors.push({ doc_file: relPath, reason });
+        getOrCreateDocEntry(relPath).frontmatter_error = reason;
       }
     }
 
@@ -367,6 +395,8 @@ class ValidateCommand extends BaseCommand {
           examples: placeholderMatches.slice(0, 3),
           reason: "Placeholder hashes detected - writer didn't use format-reference",
         });
+        const entry = getOrCreateDocEntry(relPath);
+        entry.placeholder_errors = placeholderMatches;
       }
 
       // Inline code block detection (fenced code blocks in documentation)
@@ -378,6 +408,7 @@ class ValidateCommand extends BaseCommand {
           block_count: codeBlockMatches.length,
           reason: "Documentation contains inline code blocks",
         });
+        getOrCreateDocEntry(relPath).inline_code_block_count = codeBlockMatches.length;
       }
 
       // Capability list detection (tables with Command/Purpose headers)
@@ -387,9 +418,11 @@ class ValidateCommand extends BaseCommand {
           doc_file: relPath,
           reason: "Possible capability list table detected",
         });
+        getOrCreateDocEntry(relPath).has_capability_list_warning = true;
       }
     }
 
+    // Legacy flat arrays for backward compat
     const stale: Array<{
       doc_file: string;
       reference: string;
@@ -410,10 +443,15 @@ class ValidateCommand extends BaseCommand {
 
       // Check if file exists
       if (!existsSync(absoluteRefFile)) {
+        const reason = "File not found";
         invalid.push({
           doc_file: ref.file,
           reference: ref.reference,
-          reason: "File not found",
+          reason,
+        });
+        getOrCreateDocEntry(ref.file).invalid.push({
+          reference: ref.reference,
+          reason,
         });
         continue;
       }
@@ -426,10 +464,15 @@ class ValidateCommand extends BaseCommand {
         );
 
         if (!success) {
+          const reason = "Git hash lookup failed";
           invalid.push({
             doc_file: ref.file,
             reference: ref.reference,
-            reason: "Git hash lookup failed",
+            reason,
+          });
+          getOrCreateDocEntry(ref.file).invalid.push({
+            reference: ref.reference,
+            reason,
           });
           continue;
         }
@@ -442,6 +485,14 @@ class ValidateCommand extends BaseCommand {
             current_hash: currentHash,
             ref_type: "file-only",
           });
+          getOrCreateDocEntry(ref.file).stale.push({
+            reference: ref.reference,
+            file_path: ref.refFile,
+            symbol_name: null,
+            stored_hash: ref.refHash,
+            current_hash: currentHash,
+            ref_type: "file-only",
+          });
         }
         continue;
       }
@@ -450,10 +501,15 @@ class ValidateCommand extends BaseCommand {
       const ext = extname(absoluteRefFile);
       const supported = getSupportedExtensions();
       if (!supported.includes(ext)) {
+        const reason = `File type ${ext} does not support symbol references`;
         invalid.push({
           doc_file: ref.file,
           reference: ref.reference,
-          reason: `File type ${ext} does not support symbol references`,
+          reason,
+        });
+        getOrCreateDocEntry(ref.file).invalid.push({
+          reference: ref.reference,
+          reason,
         });
         continue;
       }
@@ -461,10 +517,15 @@ class ValidateCommand extends BaseCommand {
       // Check if symbol exists
       const symbolFound = await symbolExists(absoluteRefFile, ref.refSymbol!);
       if (!symbolFound) {
+        const reason = "Symbol not found";
         invalid.push({
           doc_file: ref.file,
           reference: ref.reference,
-          reason: "Symbol not found",
+          reason,
+        });
+        getOrCreateDocEntry(ref.file).invalid.push({
+          reference: ref.reference,
+          reason,
         });
         continue;
       }
@@ -483,10 +544,15 @@ class ValidateCommand extends BaseCommand {
       );
 
       if (!success) {
+        const reason = "Git blame failed";
         invalid.push({
           doc_file: ref.file,
           reference: ref.reference,
-          reason: "Git blame failed",
+          reason,
+        });
+        getOrCreateDocEntry(ref.file).invalid.push({
+          reference: ref.reference,
+          reason,
         });
         continue;
       }
@@ -495,6 +561,14 @@ class ValidateCommand extends BaseCommand {
         stale.push({
           doc_file: ref.file,
           reference: ref.reference,
+          stored_hash: ref.refHash,
+          current_hash: mostRecentHash,
+          ref_type: "symbol",
+        });
+        getOrCreateDocEntry(ref.file).stale.push({
+          reference: ref.reference,
+          file_path: ref.refFile,
+          symbol_name: ref.refSymbol,
           stored_hash: ref.refHash,
           current_hash: mostRecentHash,
           ref_type: "symbol",
@@ -523,6 +597,21 @@ class ValidateCommand extends BaseCommand {
       message = `Validated ${mdFiles.length} files and ${refs.length} references (${symbolRefs} symbol, ${fileOnlyRefs} file-only)`;
     }
 
+    // Filter byDocFile to only include docs with actual issues
+    const byDocFileFiltered: Record<string, DocFileIssues> = {};
+    for (const [docFile, issues] of Object.entries(byDocFile)) {
+      const hasIssues =
+        issues.stale.length > 0 ||
+        issues.invalid.length > 0 ||
+        issues.frontmatter_error !== null ||
+        issues.placeholder_errors.length > 0 ||
+        issues.inline_code_block_count > 0 ||
+        issues.has_capability_list_warning;
+      if (hasIssues) {
+        byDocFileFiltered[docFile] = issues;
+      }
+    }
+
     return this.success({
       message,
       total_files: mdFiles.length,
@@ -535,6 +624,9 @@ class ValidateCommand extends BaseCommand {
       placeholder_error_count: placeholderErrors.length,
       inline_code_error_count: inlineCodeErrors.length,
       capability_list_warning_count: capabilityListWarnings.length,
+      // Grouped by doc file for easy delegation to documentation-writers
+      by_doc_file: byDocFileFiltered,
+      // Legacy flat arrays for backward compat
       frontmatter_errors: frontmatterErrors,
       stale,
       invalid,
