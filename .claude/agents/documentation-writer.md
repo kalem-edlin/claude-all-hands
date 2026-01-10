@@ -163,10 +163,11 @@ Authentication uses JWT for stateless sessions. The signing implementation [ref:
    a. Run: `envoy docs validate --path docs/<domain>/`
    b. Check response:
       - `invalid_count` must be 0
+   b. Check response:
+      - `invalid_count` must be 0
       - `placeholder_error_count` must be 0
       - `inline_code_error_count` must be 0
-   c. Run: `grep -r '^```' docs/<domain>/*.md | wc -l`
-      - Result must be 0 (no fenced code blocks)
+   c. If any check fails:
    d. If any check fails:
       - Fix the issue
       - Re-validate
