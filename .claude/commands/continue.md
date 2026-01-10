@@ -7,12 +7,12 @@ Loop through plan prompts, delegate to specialists for implementation, extract d
 </objective>
 
 <context>
-Plan status: !`.claude/envoy/envoy plan check`
+Plan status: !`envoy plan check`
 </context>
 
 <process>
 <step name="get_next_prompts">
-Call `.claude/envoy/envoy plan next [-n <count>]`
+Call `envoy plan next [-n <count>]`
 
 Returns next available prompts respecting dependencies:
 - If count > 1: returns independent prompts that can run in parallel
@@ -42,22 +42,14 @@ For each prompt from next:
 3. **Parallel execution**: If multiple prompts/variants returned, delegate all in parallel
 </step>
 
-<step name="extract_documentation">
-After each specialist returns (prompt merged):
-
-Delegate to **documentor agent**:
-* "Run the extract-workflow. INPUTS: `{ mode: 'extract', prompt_num: <N>, variant: <V>, feature_branch: <current_branch> }`"
-* OUTPUTS: `{ success: true }`
-</step>
-
 <step name="loop">
-Repeat steps 1-3 until:
+Repeat steps 1-2 until:
 - No more prompts returned from next
 - No prompts in_progress status
 </step>
 
 <step name="full_review">
-Call `.claude/envoy/envoy gemini review --full`
+Call `envoy gemini review --full`
 
 Returns: `{ verdict, thoughts?, answered_questions?, suggested_fixes? }`
 
@@ -79,14 +71,45 @@ If verdict = "failed" OR suggested_fixes exist:
 4. Rerun full review (repeat until passes)
 </step>
 
+<step name="extract_documentation">
+After full review passes, delegate to **documentation-taxonomist** agent with adjust mode:
+
+1. Get prompt walkthroughs for rationale context:
+   ```bash
+   envoy plan get-all-walkthroughs
+   ```
+
+2. Delegate to taxonomist with inputs:
+   ```yaml
+   mode: "adjust"
+   use_diff: true
+   feature_branch: "<current_branch>"
+   walkthroughs: <output from get-all-walkthroughs>
+   ```
+
+3. Taxonomist identifies affected domains, delegates to writers (writers do NOT commit)
+
+4. After ALL writers complete, commit documentation changes:
+   ```bash
+   git add docs/
+   git commit -m "docs: update documentation for feature"
+   ```
+
+5. Mark prompts documented:
+   ```bash
+   envoy plan mark-all-documented
+   ```
+</step>
+
 <step name="mandatory_doc_audit">
-Delegate to **documentor agent**:
-* "Run the audit-workflow. INPUTS: `{ mode: 'audit', feature_branch: <current_branch> }`"
-* OUTPUTS: `{ success: true }`
+Call `/audit-docs` to validate all documentation symbol references.
+* Checks for stale (hash changed) and invalid (symbol deleted) references
+* If issues found: fix automatically or present to user
+* Returns: `{ success: true }`
 </step>
 
 <step name="complete_plan">
-Call `.claude/envoy/envoy plan complete`
+Call `envoy plan complete`
 
 This:
 - Generates summary.md
@@ -102,7 +125,7 @@ Call /whats-next command
 <success_criteria>
 - All prompts implemented via specialist delegation
 - Variants executed in parallel
-- Documentation extracted for each prompt
+- Documentation updated from all changes (once, after review passes)
 - Full review passes
 - Documentation audit completed
 - Plan marked complete with PR created
@@ -112,7 +135,7 @@ Call /whats-next command
 <constraints>
 - MUST respect prompt dependencies (use envoy next)
 - MUST run all variants in parallel
-- MUST extract documentation after each prompt
+- MUST extract documentation once after full review passes
 - MUST loop until no prompts remain
 - MUST pass full review before completing
 - MUST run doc audit before completion
