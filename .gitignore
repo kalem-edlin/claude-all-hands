@@ -13,3 +13,6 @@ node_modules/
 *-output.xml
 repomix-output.*
 .claude-trace
+
+# External repos for research
+.external/

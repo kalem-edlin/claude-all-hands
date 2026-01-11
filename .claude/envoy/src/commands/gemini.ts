@@ -4,35 +4,34 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { Command } from "commander";
-import { readFileSync, existsSync, readdirSync } from "fs";
-import { join, extname } from "path";
 import { spawnSync } from "child_process";
+import { Command } from "commander";
+import { existsSync, readFileSync } from "fs";
+import { extname, join } from "path";
 import { getBaseBranch, getBranch, getDiff, getPlanDir, isDirectModeBranch } from "../lib/git.js";
 import {
-  readPlan,
-  readAllPrompts,
-  readUserInput,
-  readDesignManifest,
-  appendUserInput,
-  writeAuditQuestionsFeedback,
-  readAuditQuestionsFeedback,
-  writeReviewQuestionsFeedback,
-  readReviewQuestionsFeedback,
   appendPlanAudit,
   appendPlanReview,
   appendPromptReview,
+  appendUserInput,
   deleteFeedbackFile,
-  readPrompt,
-  updatePromptStatus,
-  planExists,
   getPlanPaths,
   getPromptId,
-  parsePromptId,
+  planExists,
+  readAllPrompts,
+  readAuditQuestionsFeedback,
+  readDesignManifest,
+  readPlan,
+  readPrompt,
+  readReviewQuestionsFeedback,
+  readUserInput,
+  updatePromptStatus,
+  writeAuditQuestionsFeedback,
+  writeReviewQuestionsFeedback
 } from "../lib/index.js";
-import { watchForDone } from "../lib/watcher.js";
-import { withRetry, GEMINI_FALLBACKS } from "../lib/retry.js";
 import { recordGeminiCall } from "../lib/observability.js";
+import { GEMINI_FALLBACKS, withRetry } from "../lib/retry.js";
+import { watchForDone } from "../lib/watcher.js";
 import { BaseCommand, type CommandResult } from "./base.js";
 
 // Default model for most operations
@@ -128,9 +127,9 @@ class GeminiAskCommand extends BaseCommand {
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     const query = args.query as string;
@@ -234,9 +233,9 @@ Output JSON:
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     if (isDirectModeBranch(getBranch())) {
@@ -362,9 +361,9 @@ Output JSON:
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     const query = args.query as string;
@@ -465,9 +464,9 @@ Output JSON:
   }
 
   async execute(_args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     if (isDirectModeBranch(getBranch())) {
@@ -680,9 +679,9 @@ Output JSON:
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     if (isDirectModeBranch(getBranch())) {

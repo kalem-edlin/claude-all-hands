@@ -28,7 +28,7 @@ async function getInfo(
       api_keys: {
         PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY ? "set" : "missing",
         TAVILY_API_KEY: process.env.TAVILY_API_KEY ? "set" : "missing",
-        VERTEX_API_KEY: process.env.VERTEX_API_KEY ? "set" : "missing",
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY ? "set" : "missing",
         X_AI_API_KEY: process.env.X_AI_API_KEY ? "set" : "missing",
         CONTEXT7_API_KEY: process.env.CONTEXT7_API_KEY ? "set" : "missing",
       },

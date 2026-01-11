@@ -2,9 +2,9 @@
  * Prompt lifecycle commands: next, start-prompt, record-implementation, complete-prompt, etc.
  */
 
+import { GoogleGenAI } from "@google/genai";
 import { execSync, spawnSync } from "child_process";
 import { Command } from "commander";
-import { GoogleGenAI } from "@google/genai";
 import type { PromptFrontMatter } from "../../lib/index.js";
 import {
   getBaseBranch,
@@ -617,9 +617,9 @@ Format:
       return this.error("no_plan", "No plan directory exists for this branch");
     }
 
-    const apiKey = process.env.VERTEX_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return this.error("auth_error", "VERTEX_API_KEY not set");
+      return this.error("auth_error", "GEMINI_API_KEY not set");
     }
 
     // Gather context
