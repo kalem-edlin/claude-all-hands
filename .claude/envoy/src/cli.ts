@@ -31,6 +31,8 @@ async function getInfo(
         VERTEX_API_KEY: process.env.VERTEX_API_KEY ? "set" : "missing",
         X_AI_API_KEY: process.env.X_AI_API_KEY ? "set" : "missing",
         CONTEXT7_API_KEY: process.env.CONTEXT7_API_KEY ? "set" : "missing",
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "set" : "missing",
+        ORACLE_DEFAULT_PROVIDER: process.env.ORACLE_DEFAULT_PROVIDER ? "set" : "missing",
       },
       timeout_ms: process.env.ENVOY_TIMEOUT_MS ?? "120000",
     },
