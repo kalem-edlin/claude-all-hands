@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, relative } from 'path';
 import { minimatch } from 'minimatch';
-import { walkDir } from './fs-utils.js';
+import { getGitFiles } from './git.js';
 
 interface ManifestData {
   distribute?: string[];
@@ -57,10 +57,8 @@ export class Manifest {
   }
 
   getDistributableFiles(): Set<string> {
-    const allFiles = new Set<string>();
-    walkDir(this.allhandsRoot, (filePath) => {
-      allFiles.add(relative(this.allhandsRoot, filePath));
-    });
+    // Use git ls-files to respect .gitignore
+    const allFiles = getGitFiles(this.allhandsRoot);
 
     const filtered = new Set<string>();
     for (const file of allFiles) {
