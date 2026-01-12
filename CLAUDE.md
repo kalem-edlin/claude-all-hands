@@ -15,8 +15,6 @@ When delegating to specialists:
 1. **Task relevance**: Match task domain to specialist's declared capabilities
 2. **Scope narrowness**: Prefer specialists whose domain_files overlap most with task files
 
-Fallback to surveyor (discovery) or worker (implementation) when no domain specialist matches.
-
 ## Envoy Usage and Error Handling
 
 Always call envoy via `envoy <group> <command> [args] --agent <agent_name>` - DO NOT use npx, tsx, ts-node or any other wrapper, nor any other path than "envoy" itself. Always attempt to add your agent name to envoy commands for visibility.
@@ -36,13 +34,9 @@ On failure, agent should infer recovery based on workflow context:
 - **URL extraction**: All agents can use `envoy tavily extract "<url>"` for known doc URLs
 - **GitHub content**: Use `gh` CLI instead of extract (e.g., `gh api repos/owner/repo/contents/path`)
 
-## Documentation-First Implementation
-
-Before implementation tasks, call `envoy knowledge search "<task focus as descriptive request>"` (semantic search - use full phrases, not keywords) to find existing patterns. Applies even when planning workflow is bypassed.
-
 ## Codebase Exploration
 
-When exploring codebase for context (understanding patterns, investigating behavior, gathering requirements), invoke `/knowledge-discovery` skill.
+When exploring the codebase for context (understanding patterns, investigating behavior, gathering requirements), you MUST invoke `/codebase-understanding` skill first.
 
 ## CLAUDE.md Maintenance
 

@@ -1,10 +1,10 @@
 ---
 name: research-tools
-description: Use for research needs. IE "search the web", "research [topic]", "extract URL content", "find sources". Provides Tavily (search/extract), Perplexity (deep research), Grok (X/Twitter).
+description: Web research and content extraction. Use for "search the web", "research [topic]", "extract URL content", "find sources". Provides Tavily (search/extract), Perplexity (deep research), Grok (X/Twitter). For library docs, use /external-docs skill instead.
 ---
 
 <objective>
-External research capability for agents. Web search, deep research with citations, and real-time social signals via envoy commands.
+External research capability for agents. Web search, deep research with citations, and real-time social signals via envoy commands. For library/package documentation, use /external-docs skill instead.
 </objective>
 
 <quick_start>
@@ -18,13 +18,8 @@ envoy tavily search "query"
 # Extract URL content
 envoy tavily extract "url1" "url2"
 
-# Library documentation search (Context7)
-envoy context7 search "react"
-envoy context7 search "fastify" "middleware patterns"
-
-# Get library docs for known library (Context7)
-envoy context7 context "/facebook/react" "hooks usage"
-envoy context7 context "/fastify/fastify" "routing" --text
+# X/Twitter insights (Grok)
+envoy xai search "query"
 ```
 </quick_start>
 
@@ -33,7 +28,7 @@ envoy context7 context "/fastify/fastify" "routing" --text
 - GitHub content: use `gh` CLI instead of extract
 - All commands return JSON - parse `data.content` or `data.results`
 - Use TODAY's date for time-sensitive queries: `date +%Y-%m-%d`
-- Context7 requires search → context flow (search gives libraryId for context)
+- Library/package docs: use /external-docs skill (Context7) instead
 </constraints>
 
 <workflow>
@@ -44,12 +39,12 @@ Clarify: What to learn? What for? Depth needed?
 <step name="choose_tool">
 | Need | Tool | Cost |
 |------|------|------|
-| Library docs (known library) | `context7 search` → `context7 context` | Low |
 | Broad question, synthesis | `perplexity research` | High |
 | Synthesis + real-time validation | `perplexity research --grok-challenge` | Higher |
 | X/Twitter community insights | `xai search` | Medium |
 | Find sources, discover URLs | `tavily search` | Medium |
 | Full content from known URL | `tavily extract` | Low |
+| Library/package docs | Use /external-docs skill | - |
 </step>
 
 <step name="process_results">
@@ -60,12 +55,6 @@ All tools return JSON. Parse `data.content` or `data.results` for findings.
 <examples>
 <command_reference>
 ```bash
-# Context7 (library documentation)
-envoy context7 search "react"                              # Find react libraries
-envoy context7 search "fastify" "middleware handling"      # Search with query context
-envoy context7 context "/facebook/react" "hooks"           # Get docs (JSON)
-envoy context7 context "/facebook/react" "hooks" --text    # Get docs (plain text)
-
 # Perplexity (deep research)
 envoy perplexity research "query"
 envoy perplexity research "query" --grok-challenge
@@ -88,8 +77,7 @@ gh issue view {number} --repo {owner}/{repo}
 <decision_tree>
 ```
 Need information?
-├─ How does library X work? → context7 search "X" → context7 context "<id>" "question"
-├─ Library docs for codebase dependency? → context7 search → context7 context
+├─ Library/package docs? → use /external-docs skill
 ├─ Know exact URL? → tavily extract
 ├─ Need to find sources? → tavily search → extract promising URLs
 ├─ Tech research for planning? → perplexity research --grok-challenge
@@ -97,26 +85,6 @@ Need information?
 └─ Quick answer, no validation? → perplexity research
 ```
 </decision_tree>
-
-<context7_flow>
-Context7 is for library/package documentation. Two-step flow:
-
-1. **Search**: Find the library and get its ID
-```bash
-envoy context7 search "react"
-# Returns: { results: [{ id: "/facebook/react", name: "React", ... }] }
-```
-
-2. **Context**: Get docs for specific questions using the ID
-```bash
-envoy context7 context "/facebook/react" "useState and useEffect"
-# Returns: { docs: [{ title, content, source }] }
-```
-
-**Tips for minimal context usage:**
-- Use `--text` for direct LLM consumption (no JSON parsing)
-- Be specific in query to get relevant docs only
-</context7_flow>
 
 <output_format>
 ```markdown
@@ -139,13 +107,11 @@ Actions based on findings.
 - Skipping scope clarification before research
 - Not parsing JSON response properly
 - Using from non-curator/researcher agents
-- Calling context7 context without searching first (need libraryId)
-- Using context7 for non-library questions (use perplexity instead)
+- Using for library docs (use /external-docs skill instead)
 </anti_patterns>
 
 <success_criteria>
 - JSON response: `status: success` with `data` containing findings
 - Sources/citations included for synthesis queries
 - Content extracted for known URLs
-- Context7: Valid libraryId used in context command
 </success_criteria>

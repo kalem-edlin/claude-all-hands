@@ -1,6 +1,6 @@
 ---
 name: claude-code-patterns
-description: Use when building agents, skills, hooks, commands, or Claude Code tool configs. Contains Claude Code native feature documentation and structure patterns.
+description: Must use when building agents, skills, hooks, commands, or Claude Code tool configs. Contains Claude Code native feature documentation and structure patterns that are essential context.
 ---
 
 <objective>
@@ -9,7 +9,7 @@ Reference for Claude Code native features. Docs auto-sync to `~/.claude-code-doc
 
 <quick_start>
 1. Identify what you're building (skill, agent, hook, etc.)
-2. Read corresponding docs from `~/.claude-code-docs/docs/`
+2. MUST Read corresponding docs from `~/.claude-code-docs/docs/`
 3. Apply patterns from doc categories below
 </quick_start>
 
@@ -52,13 +52,4 @@ Reference for Claude Code native features. Docs auto-sync to `~/.claude-code-doc
 <examples>
 ### Extended Patterns (./docs/)
 - `docs/context-hygiene.md` - CLAUDE.md priority rules, poison context detection
-
-### Community Patterns
-For advanced patterns beyond official docs:
-- [claudelog.com](https://claudelog.com) - community mechanics and patterns
-- [claudelog.com/mechanics/sub-agents/](https://claudelog.com/mechanics/sub-agents/)
-- [claudelog.com/mechanics/split-role-sub-agents/](https://claudelog.com/mechanics/split-role-sub-agents/)
-- [claudelog.com/mechanics/custom-agents/](https://claudelog.com/mechanics/custom-agents/)
-- [claudelog.com/mechanics/agent-engineering/](https://claudelog.com/mechanics/agent-engineering/)
-- [AgentDB](https://agentdb.ruv.io/) - memory management
 </examples>

@@ -29,7 +29,7 @@
       "Bash(envoy:*)",
       "SlashCommand(/plan:*)"
     ],
-    "deny": [],
+    "deny": ["Task(claude-code-guide)"],
     "ask": []
   },
   "enableAllProjectMcpServers": false,

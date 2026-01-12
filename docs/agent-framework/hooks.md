@@ -1,30 +1,40 @@
 ---
-description: Hook system providing startup initialization, artifact validation, and workflow-specific checks that run automatically without agent involvement.
+description: Hook system providing startup initialization, desktop notifications at workflow gates, artifact validation, and research access control that run automatically without agent involvement.
 ---
 
 # Hook System
 
 ## Overview
 
-Hooks address the gap between conversation start and agent readiness. Before the main agent receives any prompt, the environment needs initialization: plan state checked, worktrees cleaned up, artifacts validated. Hooks run automatically at defined trigger points (startup, pre-commit, etc.), establishing invariants the rest of the framework depends on. Unlike agents, hooks run without Claude involvement - they're scripts that execute and provide results.
+Hooks address the gap between conversation start and agent readiness. Before the main agent receives any prompt, the environment needs initialization: plan state checked, worktrees cleaned up, artifacts validated. Hooks run automatically at defined trigger points (startup, pre-commit, stop, notification), establishing invariants the rest of the framework depends on. Unlike agents, hooks run without Claude involvement - they're scripts that execute and provide results.
+
+The hook system also provides user awareness through desktop notifications at key workflow gates. When agents stop, request permission, or wait for input, notification hooks alert the user regardless of terminal focus. This enables asynchronous workflows where users can step away knowing they will be notified when attention is needed.
 
 ## Key Decisions
 
-**Startup hook for session initialization**: The startup hook [ref:.claude/hooks/startup.sh::e12e962] runs before every conversation. It initializes envoy, validates artifacts, releases stale prompts from previous sessions, cleans up orphaned worktrees, and syncs external documentation. This ensures each session starts with a consistent state regardless of how the previous session ended.
+**Startup hook for session initialization**: The startup hook [ref:.claude/hooks/startup.sh::7baefe1] runs before every conversation. It initializes envoy, validates artifacts, releases stale prompts from previous sessions, cleans up orphaned worktrees, and syncs external documentation. This ensures each session starts with a consistent state regardless of how the previous session ended.
 
-**Branch-aware mode detection**: The startup hook examines the current git branch to determine workflow mode. Main/master/develop branches trigger "Direct" mode (no planning required). Feature branches trigger plan initialization and status reporting. Quick/curator/docs prefixed branches bypass planning for their specific workflows. This contextual awareness means users don't need to specify mode - the framework infers it from branch conventions.
+**Branch-aware mode detection**: The startup hook examines the current git branch to determine workflow mode. Main/master/develop branches trigger "Direct" mode (no planning required). Feature branches trigger plan initialization and status reporting. Quick/curator/docs prefixed branches bypass planning for their specific workflows. This contextual awareness means users do not need to specify mode - the framework infers it from branch conventions.
 
-**Artifact validation as early feedback**: The validate_artifacts script [ref:.claude/hooks/validate_artifacts.py::c15ff37] checks agent files for structural issues before the conversation begins. Missing frontmatter, name mismatches, and missing skill references surface as systemMessage JSON, alerting the user immediately rather than failing mid-workflow.
+**Desktop notifications at workflow gates**: A family of notification hooks alerts users when agent state changes require attention. The stop notification [ref:.claude/hooks/notify_stop.sh::9fa5369] fires when any agent completes work. The idle notification [ref:.claude/hooks/notify_idle.sh::9fa5369] triggers when waiting for user input. The permission notification [ref:.claude/hooks/notify_permission.sh::6bde9f0] fires when tools require user approval. The elicitation notification [ref:.claude/hooks/notify_elicitation.sh::783a982] alerts when AskUserQuestion awaits response. All use envoy notify for cross-platform desktop alerts.
 
-**Agent scanning for configuration integrity**: The scan_agents script [ref:.claude/hooks/scan_agents.py::c15ff37] parses agent frontmatter to verify structure. It catches issues like skills referencing non-existent directories, ensuring agents won't fail at invocation time.
+**Artifact validation as early feedback**: The validate_artifacts script [ref:.claude/hooks/validate_artifacts.py::e99bf1f] checks agent files for structural issues before the conversation begins. Missing frontmatter, name mismatches, and missing skill references surface as systemMessage JSON, alerting the user immediately rather than failing mid-workflow.
 
-**Background sync for external resources**: The startup hook clones or pulls claude-code-docs in the background. This keeps official Claude Code documentation current without blocking session start. The docs directory (~/.claude-code-docs) provides authoritative reference for the claude-code-patterns skill.
+**Agent scanning for configuration integrity**: The scan_agents script [ref:.claude/hooks/scan_agents.py::e99bf1f] parses agent frontmatter to verify structure. It catches issues like skills referencing non-existent directories, ensuring agents will not fail at invocation time.
+
+**Claude Code pattern enforcement**: The enforce_curator_for_claude_code hook [ref:.claude/hooks/enforce_curator_for_claude_code.py::b6b2998] blocks direct delegation to claude-code-guide and redirects to the curator agent. This centralizes Claude Code expertise through the curator, which has the appropriate skills loaded and can provide context-efficient guidance.
+
+**Background sync for external resources**: The startup hook clones or pulls claude-code-docs in the background. This keeps official Claude Code documentation current without blocking session start. The docs directory provides authoritative reference for the claude-code-patterns skill.
 
 ## Patterns
+
+**Hook configuration via settings.json**: All hooks are configured in the settings file [ref:.claude/settings.json::b6b2998] under the hooks key. Each hook type (Stop, SessionStart, Notification, PreToolUse, SubagentStop, PreCompact) maps matchers to hook commands. This declarative configuration makes hook behavior visible without reading individual scripts.
 
 **systemMessage for user-visible errors**: Validation hooks output JSON with a systemMessage field when errors are found. This message appears to the user at session start, providing immediate awareness of configuration issues without agent interpretation. The format is simple: list of warnings with file and issue description.
 
 **Silent success for expected state**: Hooks that complete successfully typically produce no output. The startup hook's plan status messages are an exception - they provide useful context about where the session should focus. But validation hooks follow the Unix convention of silence on success.
+
+**Notification hooks as workflow awareness**: Notification hooks exist purely for user awareness - they always return continue: true and never block execution. The rationale is that long-running agent tasks may complete while the user is away from terminal. Desktop notifications bring attention back at the right moment rather than requiring constant monitoring.
 
 **Worktree cleanup as garbage collection**: The cleanup-worktrees envoy command runs at startup to remove orphaned worktrees. These can accumulate when sessions crash or users switch branches without cleanup. Automatic garbage collection prevents disk accumulation and git confusion.
 
@@ -38,4 +48,8 @@ Hooks address the gap between conversation start and agent readiness. Before the
 
 **Recovery from crashed session**: A previous session crashed during implementation, leaving a prompt in in_progress state. The startup hook's release-all-prompts call frees the prompt. The user can now invoke /continue to resume implementation without manual intervention.
 
+**Asynchronous agent monitoring**: User starts a long-running agent task and switches to other work. When the agent completes, notify_stop fires a desktop notification. User returns to terminal when ready rather than polling for completion. Similarly, if the agent needs permission or has a question, notifications alert the user immediately.
+
 **External docs update**: Claude Code released new documentation. On session start, the startup hook's background sync pulls the latest docs. The claude-code-patterns skill now references current information without user action.
+
+**Claude Code guidance request**: User asks about hooks or skills. The main agent attempts to delegate to claude-code-guide but the enforce_curator_for_claude_code hook blocks this and redirects to curator. This ensures the curator's skills and context-efficiency rules apply to all Claude Code guidance.

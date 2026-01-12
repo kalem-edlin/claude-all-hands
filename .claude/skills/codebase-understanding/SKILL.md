@@ -1,5 +1,5 @@
 ---
-name: knowledge-discovery
+name: codebase-understanding
 description: Semantic codebase exploration using knowledge base + LSP. Use for context gathering, understanding design decisions, finding implementation patterns. Combines "why" from docs with "where" from code references.
 ---
 

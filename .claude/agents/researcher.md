@@ -2,7 +2,7 @@
 name: researcher
 description: |
   External research specialist with web search capability. Use for ANY external information gathering: API docs, library documentation, best practices, implementation patterns, external URLs. Cannot implement - discovery only.
-skills: research-tools
+skills: research-tools, external-docs
 tools: Read, Glob, Grep, Bash
 model: opus
 color: blue
@@ -42,7 +42,7 @@ External research specialist with exclusive web search capability. Gathers infor
 
 **STEPS:**
 1. Parse research objectives and determine best tool for each
-2. Execute research queries using research-tools skill
+2. Execute research queries using /research-tools skill
 3. Synthesize findings into concise, actionable format
 4. Return structured response:
    ```
@@ -60,7 +60,7 @@ External research specialist with exclusive web search capability. Gathers infor
 
 <constraints>
 - DISCOVERY ONLY - NEVER implement code
-- MUST use research-tools skill for external queries
+- MUST use /research-tools skill for external queries
 - MUST include sources/citations in findings
 - For GitHub content: use `gh` CLI instead of extract
 - Return concise findings - no bulk data dumps
