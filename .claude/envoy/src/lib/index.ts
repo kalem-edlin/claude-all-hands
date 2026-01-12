@@ -114,3 +114,13 @@ export {
 } from "./notification.js";
 export type { NotifyOptions } from "./notification.js";
 
+// Agent infrastructure
+export { AgentRunner } from "./agents/index.js";
+export type {
+  AgentConfig,
+  AgentResult,
+  AggregatorInput,
+  AggregatorOutput,
+  SearchResult,
+} from "./agents/index.js";
+

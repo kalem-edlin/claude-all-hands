@@ -2,20 +2,38 @@
  * Knowledge commands - semantic search and indexing for docs/ documentation.
  *
  * Commands:
- *   envoy knowledge search <query> [--metadata-only]
+ *   envoy knowledge search <query> [--metadata-only] [--force-aggregate] [--no-aggregate]
  *   envoy knowledge reindex-all
  *   envoy knowledge reindex-from-changes [--files <json_array>]
  */
 
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { Command } from "commander";
 import { spawnSync } from "child_process";
 import { BaseCommand, CommandResult } from "./base.js";
 import { KnowledgeService, type FileChange } from "../lib/knowledge.js";
+import {
+  AgentRunner,
+  type AggregatorOutput,
+  type SearchResult,
+} from "../lib/agents/index.js";
 import { getBaseBranch } from "../lib/git.js";
 
 const getProjectRoot = (): string => {
   return process.env.PROJECT_ROOT || process.cwd();
 };
+
+// Load aggregator prompt from file
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const AGGREGATOR_PROMPT_PATH = join(__dirname, "../lib/agents/prompts/knowledge-aggregator.md");
+
+const getAggregatorPrompt = (): string => {
+  return readFileSync(AGGREGATOR_PROMPT_PATH, "utf-8");
+};
+
+const DEFAULT_TOKEN_THRESHOLD = 3500;
 
 /**
  * Auto-detect doc file changes since branch diverged from base.
@@ -70,43 +88,155 @@ function getDocChangesFromGit(): FileChange[] {
 }
 
 /**
- * Search command - semantic search against docs index
+ * Search command - semantic search against docs index with hybrid aggregation
  */
 class SearchCommand extends BaseCommand {
   readonly name = "search";
-  readonly description = "Semantic search docs (use descriptive phrases, not keywords)";
+  readonly description = "Semantic search docs (aggregates large results automatically)";
 
   defineArguments(cmd: Command): void {
     cmd
       .argument("<query>", "Descriptive phrase (e.g. 'how to handle API authentication' not 'auth')")
-      .option("--metadata-only", "Return only file paths and descriptions (no full content)");
+      .option("--metadata-only", "Return only file paths and descriptions (no full content)")
+      .option("--force-aggregate", "Force aggregation even below threshold")
+      .option("--no-aggregate", "Disable aggregation entirely");
   }
 
   async execute(args: Record<string, unknown>): Promise<CommandResult> {
     const query = args.query as string;
     const metadataOnly = !!args.metadataOnly;
+    const forceAggregate = !!args.forceAggregate;
+    const noAggregate = !!args.noAggregate;
 
     if (!query) {
       return this.error("validation_error", "query is required");
     }
 
+    const projectRoot = getProjectRoot();
+
     try {
-      const service = new KnowledgeService(getProjectRoot());
+      const service = new KnowledgeService(projectRoot);
       const results = await service.search(query, 50, metadataOnly);
 
-      return this.success({
-        message: "Search completed",
-        query,
-        metadata_only: metadataOnly,
-        results,
-        result_count: results.length,
-      });
+      // Skip aggregation if metadata-only or explicitly disabled
+      if (metadataOnly || noAggregate) {
+        return this.success({
+          query,
+          metadata_only: metadataOnly,
+          results,
+          result_count: results.length,
+        });
+      }
+
+      // Calculate total tokens
+      const totalTokens = results.reduce((sum, r) => sum + r.token_count, 0);
+      const parsedThreshold = parseInt(
+        process.env.KNOWLEDGE_AGGREGATOR_TOKEN_THRESHOLD ?? String(DEFAULT_TOKEN_THRESHOLD),
+        10
+      );
+      const threshold = Number.isNaN(parsedThreshold) ? DEFAULT_TOKEN_THRESHOLD : parsedThreshold;
+
+      // Skip aggregation if below threshold
+      if (totalTokens < threshold && !forceAggregate) {
+        return this.success({
+          aggregated: false,
+          total_tokens: totalTokens,
+          threshold,
+          results,
+          result_count: results.length,
+        });
+      }
+
+      // Separate full vs minimized results
+      const fullResults = results.filter((r) => r.full_resource_context) as SearchResult[];
+      const minimizedResults = results
+        .filter((r) => !r.full_resource_context)
+        .map((r) => ({
+          resource_path: r.resource_path,
+          similarity: r.similarity,
+          token_count: r.token_count,
+          description: r.description,
+          relevant_files: r.relevant_files,
+        })) as SearchResult[];
+
+      // Run aggregator agent
+      try {
+        const runner = new AgentRunner(projectRoot);
+        const input = this.formatAggregatorInput(query, fullResults, minimizedResults);
+
+        const result = await runner.run<AggregatorOutput>(
+          {
+            name: "knowledge-aggregator",
+            systemPrompt: getAggregatorPrompt(),
+            timeoutMs: 60000,
+          },
+          input
+        );
+
+        if (!result.success || !result.data) {
+          // Fallback to raw results on aggregation failure
+          return this.success({
+            aggregated: false,
+            aggregation_error: result.error ?? "Unknown aggregation error",
+            total_tokens: totalTokens,
+            results,
+            result_count: results.length,
+          });
+        }
+
+        return this.success({
+          aggregated: true,
+          insight: result.data.insight,
+          references: result.data.references,
+          design_notes: result.data.design_notes,
+          metadata: result.metadata,
+        });
+      } catch (e) {
+        // Fallback to raw results on any error
+        return this.success({
+          aggregated: false,
+          aggregation_error: e instanceof Error ? e.message : String(e),
+          total_tokens: totalTokens,
+          results,
+          result_count: results.length,
+        });
+      }
     } catch (e) {
       return this.error(
         "search_error",
         e instanceof Error ? e.message : String(e)
       );
     }
+  }
+
+  private formatAggregatorInput(
+    query: string,
+    fullResults: SearchResult[],
+    minimizedResults: SearchResult[]
+  ): string {
+    return `## Query
+${query}
+
+## Full Results (${fullResults.length} documents with complete content)
+
+${fullResults.map((r) => `### ${r.resource_path}
+- Similarity: ${r.similarity.toFixed(3)}
+- Tokens: ${r.token_count}
+- Description: ${r.description}
+
+Content:
+\`\`\`
+${r.full_resource_context}
+\`\`\`
+`).join("\n")}
+
+## Minimized Results (${minimizedResults.length} documents - request expansion if needed)
+
+${minimizedResults.map((r) => `- **${r.resource_path}** (similarity: ${r.similarity.toFixed(3)}, ${r.token_count} tokens)
+  ${r.description}
+`).join("\n")}
+
+Please analyze and provide your response as JSON.`;
   }
 }
 
