@@ -114,20 +114,6 @@ class ReindexFromChangesCommand extends BaseCommand {
       const service = new KnowledgeService(getProjectRoot());
       const result = await service.reindexFromChanges(changes);
 
-      if (!result.success) {
-        return {
-          status: "error",
-          error: {
-            type: "missing_references",
-            message: result.message,
-          },
-          data: {
-            missing_references: result.missing_references,
-            files: result.files,
-          },
-        };
-      }
-
       return this.success({
         message: result.message,
         files: result.files,
