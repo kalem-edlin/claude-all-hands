@@ -126,14 +126,17 @@ export async function cmdInit(target: string, autoYes: boolean = false): Promise
   // Get distributable files
   const distributable = manifest.getDistributableFiles();
 
+  // Project-specific files: never overwrite if they exist
+  const projectSpecificFiles = new Set(['CLAUDE.project.md', '.claude/settings.local.json']);
+
   // Detect conflicts (files that exist and differ)
   const conflicts: string[] = [];
 
   for (const relPath of distributable) {
     // Skip CLAUDE.md if we just migrated (it won't exist anymore)
     if (relPath === 'CLAUDE.md' && claudeMdMigrated) continue;
-    // Skip CLAUDE.project.md if we just migrated (preserve user's content)
-    if (relPath === 'CLAUDE.project.md' && claudeMdMigrated) continue;
+    // Skip project-specific files if they already exist (preserve user's content)
+    if (projectSpecificFiles.has(relPath) && existsSync(join(resolvedTarget, relPath))) continue;
 
     const sourceFile = join(allhandsRoot, relPath);
     const targetFile = join(resolvedTarget, relPath);
@@ -180,14 +183,14 @@ export async function cmdInit(target: string, autoYes: boolean = false): Promise
   let skipped = 0;
 
   for (const relPath of [...distributable].sort()) {
-    // Skip CLAUDE.project.md if we migrated user's CLAUDE.md to it
-    if (relPath === 'CLAUDE.project.md' && claudeMdMigrated) {
+    const sourceFile = join(allhandsRoot, relPath);
+    const targetFile = join(resolvedTarget, relPath);
+
+    // Skip project-specific files if they already exist (preserve user's content)
+    if (projectSpecificFiles.has(relPath) && existsSync(targetFile)) {
       skipped++;
       continue;
     }
-
-    const sourceFile = join(allhandsRoot, relPath);
-    const targetFile = join(resolvedTarget, relPath);
 
     if (!existsSync(sourceFile)) continue;
 
@@ -237,6 +240,9 @@ export async function cmdInit(target: string, autoYes: boolean = false): Promise
   if (resolution === 'backup' && conflicts.length > 0) {
     console.log(`Created ${conflicts.length} backup file(s)`);
   }
+  console.log('\nProject-specific files preserved (never overwritten):');
+  console.log('  - CLAUDE.project.md');
+  console.log('  - .claude/settings.local.json');
   console.log(`${'='.repeat(60)}`);
 
   console.log('\nNext steps:');

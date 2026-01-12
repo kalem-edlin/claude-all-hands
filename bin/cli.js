@@ -6713,10 +6713,11 @@ async function cmdInit(target, autoYes = false) {
     console.log("  Done - your instructions preserved in CLAUDE.project.md");
   }
   const distributable = manifest.getDistributableFiles();
+  const projectSpecificFiles = /* @__PURE__ */ new Set(["CLAUDE.project.md", ".claude/settings.local.json"]);
   const conflicts = [];
   for (const relPath of distributable) {
     if (relPath === "CLAUDE.md" && claudeMdMigrated) continue;
-    if (relPath === "CLAUDE.project.md" && claudeMdMigrated) continue;
+    if (projectSpecificFiles.has(relPath) && existsSync4(join3(resolvedTarget, relPath))) continue;
     const sourceFile = join3(allhandsRoot, relPath);
     const targetFile = join3(resolvedTarget, relPath);
     if (existsSync4(targetFile) && existsSync4(sourceFile)) {
@@ -6753,12 +6754,12 @@ Auto-overwriting ${conflicts.length} conflicting files (--yes mode)`);
   let copied = 0;
   let skipped = 0;
   for (const relPath of [...distributable].sort()) {
-    if (relPath === "CLAUDE.project.md" && claudeMdMigrated) {
+    const sourceFile = join3(allhandsRoot, relPath);
+    const targetFile = join3(resolvedTarget, relPath);
+    if (projectSpecificFiles.has(relPath) && existsSync4(targetFile)) {
       skipped++;
       continue;
     }
-    const sourceFile = join3(allhandsRoot, relPath);
-    const targetFile = join3(resolvedTarget, relPath);
     if (!existsSync4(sourceFile)) continue;
     mkdirSync(dirname5(targetFile), { recursive: true });
     if (existsSync4(targetFile)) {
@@ -6800,6 +6801,9 @@ ${"=".repeat(60)}`);
   if (resolution === "backup" && conflicts.length > 0) {
     console.log(`Created ${conflicts.length} backup file(s)`);
   }
+  console.log("\nProject-specific files preserved (never overwritten):");
+  console.log("  - CLAUDE.project.md");
+  console.log("  - .claude/settings.local.json");
   console.log(`${"=".repeat(60)}`);
   console.log("\nNext steps:");
   console.log("  1. Review CLAUDE.project.md for your project-specific instructions");

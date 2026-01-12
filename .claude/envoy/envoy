@@ -14,7 +14,7 @@ fi
 # Auto-install if node_modules missing
 if [ ! -d "$SCRIPT_DIR/node_modules" ]; then
     echo "Installing envoy dependencies..." >&2
-    if ! npm install --prefix "$SCRIPT_DIR"; then
+    if ! npm install --prefix "$SCRIPT_DIR" --legacy-peer-deps; then
         echo "ERROR: npm install failed for claude-envoy" >&2
         exit 1
     fi
@@ -24,7 +24,7 @@ fi
 # Reinstall if package.json changed
 if ! cmp -s "$SCRIPT_DIR/package.json" "$SCRIPT_DIR/node_modules/.package.json.cache" 2>/dev/null; then
     echo "Updating envoy dependencies..." >&2
-    if ! npm install --prefix "$SCRIPT_DIR"; then
+    if ! npm install --prefix "$SCRIPT_DIR" --legacy-peer-deps; then
         echo "ERROR: npm install failed for claude-envoy" >&2
         exit 1
     fi
