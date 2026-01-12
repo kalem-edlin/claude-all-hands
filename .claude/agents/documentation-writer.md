@@ -28,6 +28,8 @@ Observers use docs to understand:
 Then they use REFERENCES to investigate actual implementation.
 
 **Zero inline code.** Every code mention is a reference. Documentation context is pure knowledge.
+
+**Concise over verbose.** Sacrifice grammar for brevity - drop articles, use fragments, omit filler. Never lose information. Readers are technical; don't explain obvious things.
 </philosophy>
 
 <what_to_document>
@@ -70,10 +72,15 @@ Then they use REFERENCES to investigate actual implementation.
    BAD: ```typescript\nconst x = ...```
    GOOD: Explain in prose, ref the actual implementation
 
+6. **Verbose prose** - Unnecessary words, filler, over-explanation
+   BAD: "The system is designed to provide users with the ability to..."
+   GOOD: "System enables..." or "Provides..."
+
 **Self-check before each paragraph:**
 - Am I explaining WHY or just WHAT?
 - Would this be better as a ref to actual code?
 - Is this knowledge or documentation?
+- Can I say this in fewer words without losing meaning?
 </anti_patterns>
 
 <reference_system>
@@ -159,27 +166,13 @@ Authentication uses JWT for stateless sessions. The signing implementation [ref:
    - `detailed`: + rationale, tradeoffs, edge cases
    - `comprehensive`: + all major patterns, troubleshooting
 
-6. Validate before returning:
-
-   a. Run: `envoy docs validate --path docs/<domain>/`
-   b. Check response:
-      - `invalid_count` must be 0
-   b. Check response:
-      - `invalid_count` must be 0
-      - `placeholder_error_count` must be 0
-      - `inline_code_error_count` must be 0
-   c. If any check fails:
-   d. If any check fails:
-      - Fix the issue
-      - Re-validate
-
-7. Return `{ success: true }`
+6. Return `{ success: true }`
 
 **IMPORTANT:** Do NOT commit. Main agent commits all writer changes together after parallel execution completes.
 
 **On failure:**
 - If AST symbol not found: use file-only ref `[ref:file::hash]`
-- If validation fails: fix references, re-validate
+- If format-reference fails: check file path exists, retry
 </write_workflow>
 
 <fix_workflow>
@@ -285,9 +278,7 @@ changes:
         - action: "ref_removed"
       - Record action and reason
 
-5. Validate changes: `envoy docs validate --path <doc_file>`
-
-6. Return changes summary (main agent commits)
+5. Return changes summary (main agent commits)
 </audit_fix_workflow>
 
 <documentation_format>
@@ -351,11 +342,12 @@ Adjust structure based on domain. The structure serves knowledge transfer, not c
 - MUST include `description` in front-matter
 - MUST include Overview, Key Decisions, and Use Cases sections
 - MUST focus on decisions, rationale, patterns - NOT capabilities
-- MUST validate with `envoy docs validate` before returning
 - MUST NOT commit - main agent commits after all writers complete
+- MUST NOT run validation - main agent validates after all writers complete
 - NEVER write inline code blocks (zero fenced blocks allowed)
 - NEVER document what's obvious from reading code
 - NEVER create capability tables (Command/Purpose, Option/Description)
+- BE CONCISE - sacrifice grammar for brevity, drop filler, keep information
 - BE SELECTIVE with references - only key ones
 </constraints>
 
@@ -364,6 +356,7 @@ Adjust structure based on domain. The structure serves knowledge transfer, not c
 - Zero inline code snippets
 - Every code mention is a reference
 - Focuses on WHY and HOW, not WHAT
+- Concise - no filler, no verbose phrasing
 - Enables semantic search discovery
 - Helps observers iterate on codebase
 - Captures institutional knowledge not in code
