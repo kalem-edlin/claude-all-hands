@@ -1,23 +1,9 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, unlinkSync } from 'fs';
-import { join, dirname } from 'path';
-import { Manifest } from '../lib/manifest.js';
+import { existsSync, mkdirSync, copyFileSync, unlinkSync, renameSync } from 'fs';
+import { join, dirname, basename } from 'path';
+import { Manifest, filesAreDifferent } from '../lib/manifest.js';
 import { isGitRepo, getStagedFiles } from '../lib/git.js';
 import { getAllhandsRoot } from '../lib/paths.js';
-import * as readline from 'readline';
-
-async function confirm(message: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(`${message} [y/N]: `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y');
-    });
-  });
-}
+import { ConflictResolution, askConflictResolution, confirm, getNextBackupPath } from '../lib/ui.js';
 
 export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
   const targetRoot = process.cwd();
@@ -45,23 +31,45 @@ export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
   const distributable = manifest.getDistributableFiles();
   const managedPaths = new Set(distributable);
 
-  const conflicts = [...staged].filter(f => managedPaths.has(f));
-  if (conflicts.length > 0) {
+  const stagedConflicts = [...staged].filter(f => managedPaths.has(f));
+  if (stagedConflicts.length > 0) {
     console.error('Error: Staged changes detected in managed files:');
-    for (const f of conflicts.sort()) {
+    for (const f of stagedConflicts.sort()) {
       console.error(`  - ${f}`);
     }
     console.error("\nRun 'git stash' or commit first.");
     return 1;
   }
 
+  // CLAUDE.md handling
+  const targetClaudeMd = join(targetRoot, 'CLAUDE.md');
+  const targetProjectMd = join(targetRoot, 'CLAUDE.project.md');
+
+  let claudeMdMigrated = false;
+
+  if (existsSync(targetClaudeMd) && !existsSync(targetProjectMd)) {
+    // User has CLAUDE.md but no CLAUDE.project.md → migrate
+    console.log('\nMigrating CLAUDE.md → CLAUDE.project.md...');
+    renameSync(targetClaudeMd, targetProjectMd);
+    claudeMdMigrated = true;
+    console.log('  Done - your instructions preserved in CLAUDE.project.md');
+  }
+
   console.log(`Found ${distributable.size} distributable files`);
 
-  // Check which files will be overwritten
-  const willOverwrite: string[] = [];
+  // Detect conflicts and deleted files
+  const conflicts: string[] = [];
   const deletedInSource: string[] = [];
 
+  // Project-specific files to always preserve
+  const projectSpecificFiles = new Set(['CLAUDE.project.md', '.claude/settings.local.json']);
+
   for (const relPath of distributable) {
+    // Skip CLAUDE.md if we just migrated
+    if (relPath === 'CLAUDE.md' && claudeMdMigrated) continue;
+    // Skip project-specific files (always preserve user's version)
+    if (projectSpecificFiles.has(relPath)) continue;
+
     const sourceFile = join(allhandsRoot, relPath);
     const targetFile = join(targetRoot, relPath);
 
@@ -73,28 +81,35 @@ export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
     }
 
     if (existsSync(targetFile)) {
-      const sourceContent = readFileSync(sourceFile);
-      const targetContent = readFileSync(targetFile);
-      if (!sourceContent.equals(targetContent)) {
-        willOverwrite.push(relPath);
+      if (filesAreDifferent(sourceFile, targetFile)) {
+        conflicts.push(relPath);
       }
     }
   }
 
-  // Warn about overwrites
-  if (willOverwrite.length > 0) {
-    console.log(`\n${'!'.repeat(60)}`);
-    console.log('WARNING: The following files will be OVERWRITTEN:');
-    console.log(`${'!'.repeat(60)}`);
-    for (const f of willOverwrite.sort()) {
-      console.log(`  → ${f}`);
-    }
-    console.log();
+  // Handle conflicts
+  let resolution: ConflictResolution = 'overwrite';
 
-    if (!autoYes) {
-      if (!(await confirm('Continue and overwrite these files?'))) {
+  if (conflicts.length > 0) {
+    if (autoYes) {
+      resolution = 'overwrite';
+      console.log(`\nAuto-overwriting ${conflicts.length} conflicting files (--yes mode)`);
+    } else {
+      resolution = await askConflictResolution(conflicts);
+      if (resolution === 'cancel') {
         console.log('Aborted. No changes made.');
         return 1;
+      }
+    }
+
+    // Create backups if requested
+    if (resolution === 'backup') {
+      console.log('\nCreating backups...');
+      for (const relPath of conflicts) {
+        const targetFile = join(targetRoot, relPath);
+        const backupPath = getNextBackupPath(targetFile);
+        copyFileSync(targetFile, backupPath);
+        console.log(`  ${relPath} → ${basename(backupPath)}`);
       }
     }
   }
@@ -104,6 +119,9 @@ export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
   let created = 0;
 
   for (const relPath of [...distributable].sort()) {
+    // Skip project-specific files
+    if (projectSpecificFiles.has(relPath)) continue;
+
     const sourceFile = join(allhandsRoot, relPath);
     const targetFile = join(targetRoot, relPath);
 
@@ -112,9 +130,7 @@ export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
     mkdirSync(dirname(targetFile), { recursive: true });
 
     if (existsSync(targetFile)) {
-      const sourceContent = readFileSync(sourceFile);
-      const targetContent = readFileSync(targetFile);
-      if (!sourceContent.equals(targetContent)) {
+      if (filesAreDifferent(sourceFile, targetFile)) {
         copyFileSync(sourceFile, targetFile);
         updated++;
       }
@@ -143,11 +159,16 @@ export async function cmdUpdate(autoYes: boolean = false): Promise<number> {
   }
 
   console.log(`\nUpdated: ${updated}, Created: ${created}`);
+  if (claudeMdMigrated) {
+    console.log('Migrated CLAUDE.md → CLAUDE.project.md');
+  }
+  if (resolution === 'backup' && conflicts.length > 0) {
+    console.log(`Created ${conflicts.length} backup file(s)`);
+  }
   console.log('\nUpdate complete!');
   console.log('\nNote: Project-specific files preserved:');
   console.log('  - CLAUDE.project.md');
   console.log('  - .claude/settings.local.json');
-  console.log('  - .husky/project/*');
 
   return 0;
 }
