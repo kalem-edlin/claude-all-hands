@@ -44,9 +44,17 @@ Before implementation tasks, call `envoy knowledge search "<task focus as descri
 
 When exploring codebase for context (understanding patterns, investigating behavior, gathering requirements), invoke `/knowledge-discovery` skill.
 
+## CLAUDE.md Maintenance
+
+This file MUST only be edited via curator agent consultation. Changes require curator approval.
+
 ## Background Agent Diagnostics
 
 Do NOT routinely poll background agent output files for progress monitoring. Agent logs are verbose and consume significant context. Only read agent output when:
 - Agent has been running abnormally long with no completion
 - User reports or suspects a specific agent is stuck
 - Retrieving final results after confirmed completion
+
+## Project-Specific Instructions
+
+@CLAUDE.project.md
