@@ -91,7 +91,7 @@ Apply exclusions when analyzing source directories. Never assign excluded paths 
 
 - List of workspace member paths (e.g., `apps/*`, `packages/*`)
 - Each member = candidate main domain
-- Always add `dx-root` domain for root-level config/DX files
+- Consider `tooling` domain for root-level config/DX files (only if complexity warrants - simple repos can fold DX into relevant main product domain(s) that utilize it)
 
 **If no workspace detected:** Treat as single-app repo, analyze top-level structure for domains.
 </workspace_detection>
@@ -255,7 +255,19 @@ uncovered_domains: [] # domains that couldn't fit in 15-agent limit
 
    Note existing coverage to avoid duplication.
 
-4. **Agent allocation:**
+4. **DX inventory check:**
+   Before finalizing assignments, verify coverage of developer experience artifacts:
+   - `.github/workflows/` - CI/CD automation
+   - Root build scripts (`scripts/`, `Makefile`, etc.)
+   - Root config files affecting DX (`tsconfig.json`, `.eslintrc`, etc.)
+   - Distribution configs (`.npmignore`, `.internal.json`, etc.)
+
+   **DX folding decision tree:**
+   - IF DX < 5 files AND directly supports one product → fold into that product's domain
+   - IF DX < 5 files AND supports multiple products → assign to "primary" product (largest/most complex)
+   - IF DX >= 5 files OR contains complex CI/CD → create `dx-root` domain
+
+5. **Agent allocation:**
    - Simple domain: 1 agent
    - Medium domain: 1-2 agents (split by subdomain if 2)
    - Complex domain: 2-3 agents (split by subdomain groups)
@@ -265,7 +277,7 @@ uncovered_domains: [] # domains that couldn't fit in 15-agent limit
    - Return `uncovered_domains` list for domains that couldn't be included
    - Main agent can reinvoke for remaining domains
 
-5. **Create directory structure:**
+6. **Create directory structure:**
 
    ```bash
    mkdir -p docs/<domain>/<subdomain>
@@ -273,7 +285,12 @@ uncovered_domains: [] # domains that couldn't fit in 15-agent limit
 
    Create ALL directories BEFORE returning assignments.
 
-6. **Generate assignments with new schema:**
+7. **Pre-return validation:**
+   - Enumerate all non-excluded source paths in codebase
+   - Verify every path appears in at least one assignment's `source_directories`
+   - If gaps exist, adjust assignments before returning
+
+8. **Generate assignments with new schema:**
 
 ```yaml
 assignments:
@@ -315,66 +332,75 @@ assignments:
 
 ```yaml
 success: true
-coverage_complete: true | false
-gaps_found: [] # if any
-redelegation_assignments: [] # if gaps found
 readmes_written: ["docs/domain1/README.md", ...]
+issues_flagged: [] # optional - only if problems noticed while reading docs
+redelegation_assignments: [] # optional - only if issues require redelegation
 ```
+
+**PURPOSE:** Write README.md files that showcase the documentation taxonomy. The init workflow already validated coverage - this workflow focuses on creating navigational READMEs that help readers understand the doc structure.
 
 **STEPS:**
 
-1. **Coverage audit:**
-   For each assignment from init workflow:
+1. **Read all docs in each domain:**
+   For each main domain, read all `.md` files to understand:
+   - What topics are covered
+   - How subdomains relate to each other
+   - Key patterns and technologies documented
 
-   a. **Source directory coverage:**
-   - List all source directories from assignments
-   - Check docs directory for corresponding documentation
-   - Flag any source directory without docs
+   **While reading:** If you notice obvious problems (missing critical docs, broken references, major gaps), note them for `issues_flagged`. Don't actively audit - just flag what you naturally notice.
 
-   b. **File count audit:**
+2. **Write README.md per main domain:**
+   For each main domain, create a README.md that showcases the taxonomy:
 
-   ```bash
-   ls docs/<domain>/<subdomain>/*.md | wc -l
+   a. **Domain overview** (2-3 sentences describing what this domain covers)
+
+   b. **Visual structure diagram** - Use mermaid or ASCII art to show:
+   - How subdomains relate
+   - Data/control flow between documented systems
+   - Architecture overview where appropriate
+
+   c. **Subdomain navigation table:**
+   ```markdown
+   | Subdomain | Description | Key Docs |
+   |-----------|-------------|----------|
+   | [name](./subdomain/) | What it covers | Links to 2-3 key files |
    ```
 
-   - Verify minimum 3 files per subdomain
-   - Flag subdomains with insufficient files
+   d. **Technology quick-reference** - Visual summary of critical technologies:
+   ```markdown
+   ### Tech Stack
+   ```mermaid
+   graph LR
+       A[Component] -->|uses| B[Library]
+       B --> C[Pattern]
+   ```
+   ```
 
-   c. **Technology audit:**
-   - For each `critical_technologies` in assignments
-   - Grep docs for mentions of that technology
-   - Flag technologies not documented
+   e. **Entry points** - "Start here if you want to understand X" guidance
 
-2. **Gap analysis:**
-   Compile all gaps:
-   - Undocumented source directories
-   - Subdomains with <3 files
-   - Critical technologies without docs
+   f. **Cross-references** - Links to related domains if applicable
 
-3. **Auto-redelegate if gaps found:**
-   - Generate targeted assignments for gaps
-   - Return `redelegation_assignments` for main agent to dispatch
-   - Main agent will run additional writers, then reinvoke confirmation
+   **README visual guidelines:**
+   - Use mermaid diagrams for relationships/flows
+   - Use tables for structured navigation
+   - Use blockquotes for important callouts
+   - Use collapsible sections (`<details>`) for optional deep-dives
+   - Make the README scannable - headers, bullets, visual breaks
+   - The README should make readers WANT to explore the docs
 
-4. **Write README.md per main domain (if coverage complete):**
-   For each main domain:
+   Write to `docs/<domain>/README.md`
 
-   a. Read all documentation in that domain
-   b. Generate README.md with:
-   - Domain overview (2-3 sentences)
-   - Links to all subdomain docs
-   - Key technologies used
-   - Entry points for common questions
+3. **Handle issues (if any noticed):**
+   If you flagged issues while reading:
+   - Return `issues_flagged` describing problems
+   - If issues require redelegation, generate `redelegation_assignments`
+   - Main agent will dispatch additional writers if needed
 
-   c. Write to `docs/<domain>/README.md`
-
-   **Note:** README.md files provide navigation/overview but are excluded from validation and knowledge indexing. Only taxonomist writes README.md files - writers never write README.md.
-
-5. **Return confirmation results:**
-   - `coverage_complete: true` if all audits pass
-   - `gaps_found` list if issues remain after redelegation attempts
+4. **Return results:**
    - `readmes_written` list of README.md files created
-     </confirmation_workflow>
+   - `issues_flagged` only if problems were noticed (empty otherwise)
+   - `redelegation_assignments` only if redelegation needed
+</confirmation_workflow>
 
 <adjust_workflow>
 **INPUTS** (from main agent):
@@ -478,9 +504,8 @@ readmes_written: ["docs/domain1/README.md", ...]
 - MUST allocate agents based on complexity (max 15 per run)
 - MUST return uncovered_domains if 15-agent limit exceeded
 - MUST create directory structure BEFORE returning assignments
-- MUST run confirmation workflow after writers complete
-- MUST write README.md per main domain (taxonomist only, not writers)
-- MUST audit coverage and auto-redelegate if gaps found
+- MUST run confirmation workflow after writers complete (README writing, opportunistic issue flagging)
+- MUST write README.md per main domain with visual elements (taxonomist only, not writers)
 - MUST check existing docs to avoid duplication
 - NEVER mirror source directory structure in domain names
 - NEVER let writers write README.md (only taxonomist writes these)
@@ -500,9 +525,11 @@ readmes_written: ["docs/domain1/README.md", ...]
 
 **Confirmation workflow complete when:**
 
-- Coverage audit passed (all source dirs have docs)
-- File count audit passed (3+ files per subdomain)
-- Technology audit passed (critical tech documented)
-- README.md written per main domain (excluded from validation/indexing)
-- No gaps remaining (or gaps reported to main agent)
+- All domain docs read to understand structure
+- README.md written per main domain with:
+  - Visual diagrams (mermaid/ASCII)
+  - Navigation tables
+  - Technology quick-references
+  - Clear entry points
+- Any noticed issues flagged (opportunistic, not audited)
   </success_criteria>

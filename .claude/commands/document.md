@@ -212,36 +212,18 @@ Commit ALL documentation changes from parallel writers:
    git add docs/
    git commit -m "docs: initialize codebase documentation"
    ```
-
-3. Track documentation files for reindex:
-   - Get list of all doc files created/modified since branch diverged from base:
-   ```bash
-   git diff --name-only $(git merge-base HEAD <base_branch>)..HEAD -- docs/
-   ```
-   - Store this list for the reindex step
 </step>
 
 <step name="reindex_knowledge">
 Update semantic search index with new documentation:
 
-1. Build file changes JSON from tracked doc files:
-   ```json
-   [
-     {"path": "docs/domain/subdomain/file.md", "added": true},
-     {"path": "docs/domain/subdomain/other.md", "added": true}
-   ]
-   ```
-   - Use `added: true` for new files
-   - Use `modified: true` for updated files
+```bash
+envoy knowledge reindex-from-changes
+```
 
-2. Call reindex:
-   ```bash
-   envoy knowledge reindex-from-changes --files '<json_array>'
-   ```
+Command auto-detects doc changes from git merge-base. README.md files excluded automatically.
 
-3. If reindex reports missing references:
-   - Log warning but continue (docs may reference code not yet indexed)
-   - These will resolve on next full reindex
+If reindex reports missing references, log warning but continue (docs may reference code not yet indexed).
 </step>
 
 <step name="create_pr">
