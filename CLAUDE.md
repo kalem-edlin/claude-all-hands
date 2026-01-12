@@ -52,3 +52,4 @@ Do NOT routinely poll background agent output files for progress monitoring. Age
 ## Project-Specific Instructions
 
 @CLAUDE.project.md
+<!-- Test contribution -->
