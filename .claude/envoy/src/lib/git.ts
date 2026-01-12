@@ -22,11 +22,14 @@ const DIRECT_MODE_PREFIXES = ["quick/", "curator/"];
 
 /**
  * Get current git branch name.
+ * Uses CLAUDE_PROJECT_DIR if available (for hooks), else current directory.
  */
 export function getBranch(): string {
   try {
+    const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
     const result = spawnSync("git", ["branch", "--show-current"], {
       encoding: "utf-8",
+      cwd,
     });
     return result.status === 0 ? result.stdout.trim() : "";
   } catch {
@@ -108,15 +111,18 @@ export function getDiff(ref: string): string {
 
 /**
  * Get the project root directory (where .git is located).
+ * Uses CLAUDE_PROJECT_DIR if available (for hooks), else current directory.
  */
 export function getProjectRoot(): string {
+  const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   try {
     const result = execSync("git rev-parse --show-toplevel", {
       encoding: "utf-8",
+      cwd,
     });
     return result.trim();
   } catch {
-    return process.cwd();
+    return cwd;
   }
 }
 

@@ -202,3 +202,11 @@ export type {
   ResolvedStep,
   ResolvedProtocol,
 } from "./protocols.js";
+
+// Notification utilities
+export {
+  sendNotification,
+  sendGateNotification,
+  sendHookNotification,
+} from "./notification.js";
+export type { NotifyOptions } from "./notification.js";
