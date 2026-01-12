@@ -7,6 +7,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { ensurePlanDir, getPlanPaths, getUserFeedbackPath, getPromptId } from "./paths.js";
 import { readMarkdownFile, writeMarkdownWithFrontMatter, stripLogPlaceholder } from "./markdown.js";
 import { logInfo } from "./observability.js";
+import { sendGateNotification } from "./notification.js";
 import {
   FindingsGateSchema,
   PlanGateSchema,
@@ -62,6 +63,7 @@ export function writeFindingsGateFeedback(
   const yaml = stringifyYaml(content, { lineWidth: 0 });
   writeFileSync(filePath, yaml, "utf-8");
   logInfo("feedback.write", { type: "findings_gate", path: filePath });
+  sendGateNotification("Findings", "Findings ready for review");
   return filePath;
 }
 
@@ -111,6 +113,7 @@ export function writePlanGateFeedback(
   const yaml = stringifyYaml(content, { lineWidth: 0 });
   writeFileSync(filePath, yaml, "utf-8");
   logInfo("feedback.write", { type: "plan_gate", path: filePath });
+  sendGateNotification("Plan", "Plan ready for review");
   return filePath;
 }
 
@@ -164,6 +167,7 @@ export function writeTestingGateFeedback(
   writeFileSync(logsPath, "<!-- Paste test logs here -->\n", "utf-8");
 
   logInfo("feedback.write", { type: "testing_gate", yamlPath, logsPath, promptNum, variant });
+  sendGateNotification("Testing", `Testing gate ready for prompt ${getPromptId(promptNum, variant)}`);
   return { yamlPath, logsPath };
 }
 
@@ -265,6 +269,7 @@ export function writeVariantsGateFeedback(
   const yaml = stringifyYaml(content, { lineWidth: 0 });
   writeFileSync(filePath, yaml, "utf-8");
   logInfo("feedback.write", { type: "variants_gate", path: filePath, promptNum, variants: variantLetters });
+  sendGateNotification("Variants", `Variant selection ready for prompt ${promptNum}`);
   return filePath;
 }
 
@@ -318,6 +323,8 @@ export function writeLoggingGateFeedback(
   writeFileSync(logsPath, "<!-- Paste debug logs here -->\n", "utf-8");
 
   logInfo("feedback.write", { type: "logging_gate", yamlPath, logsPath, promptNum, variant });
+  const logPromptId = variant ? `${promptNum}_${variant}` : `${promptNum}`;
+  sendGateNotification("Logging", `Debug logging gate ready for prompt ${logPromptId}`);
   return { yamlPath, logsPath };
 }
 
@@ -441,6 +448,7 @@ export function writeAuditQuestionsFeedback(
   const yaml = stringifyYaml(content, { lineWidth: 0 });
   writeFileSync(filePath, yaml, "utf-8");
   logInfo("feedback.write", { type: "audit_questions", path: filePath, questionCount: questions.length });
+  sendGateNotification("Audit", `${questions.length} audit questions need answers`);
   return filePath;
 }
 
@@ -491,6 +499,7 @@ export function writeReviewQuestionsFeedback(
   const yaml = stringifyYaml(content, { lineWidth: 0 });
   writeFileSync(filePath, yaml, "utf-8");
   logInfo("feedback.write", { type: "review_questions", path: filePath, promptId, questionCount: questions.length });
+  sendGateNotification("Review", `${questions.length} review questions for ${promptId}`);
   return filePath;
 }
 
