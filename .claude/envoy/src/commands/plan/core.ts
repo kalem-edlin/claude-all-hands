@@ -199,8 +199,8 @@ export class CleanupOrphanedCommand extends BaseCommand {
         try {
           rmSync(entryPath, { recursive: true, force: true });
           cleaned.push(entry);
-        } catch {
-          // Skip if removal fails
+        } catch (error) {
+          console.warn(`Failed to remove orphaned plan directory '${entryPath}':`, error);
         }
       }
     }

@@ -13,7 +13,7 @@ python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/validate_artifacts.py"
 "$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" git cleanup-worktrees > /dev/null 2>&1
 
 # Cleanup orphaned plan directories (branches that no longer exist)
-"$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" plan cleanup-orphaned > /dev/null 2>&1
+"$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" plan cleanup-orphaned > /dev/null
 
 # Sync claude-code-docs (clone if missing, pull if behind)
 DOCS_DIR="$HOME/.claude-code-docs"

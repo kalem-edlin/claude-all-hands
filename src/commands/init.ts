@@ -1,10 +1,10 @@
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, readdirSync, writeFileSync } from 'fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
-import { basename, dirname, extname, join, resolve } from 'path';
-import * as readline from 'readline';
+import { basename, dirname, join, resolve } from 'path';
 import { isGitRepo } from '../lib/git.js';
 import { Manifest, filesAreDifferent } from '../lib/manifest.js';
 import { getAllhandsRoot } from '../lib/paths.js';
+import { ConflictResolution, askConflictResolution, confirm, getNextBackupPath } from '../lib/ui.js';
 
 const ENVOY_SHELL_FUNCTION = `
 # AllHands envoy command - resolves to .claude/envoy/envoy from current directory
@@ -12,8 +12,6 @@ envoy() {
   "$PWD/.claude/envoy/envoy" "$@"
 }
 `;
-
-type ConflictResolution = 'backup' | 'overwrite' | 'cancel';
 
 function syncGitignore(allhandsRoot: string, target: string): { added: string[]; unchanged: boolean } {
   const sourceGitignore = join(allhandsRoot, '.gitignore');
@@ -58,76 +56,6 @@ function syncGitignore(allhandsRoot: string, target: string): { added: string[];
   writeFileSync(targetGitignore, newContent);
 
   return { added: linesToAdd, unchanged: false };
-}
-
-async function askQuestion(question: string): Promise<string> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
-
-async function confirm(message: string): Promise<boolean> {
-  const answer = await askQuestion(`${message} [y/N]: `);
-  return answer.toLowerCase() === 'y';
-}
-
-async function askConflictResolution(conflicts: string[]): Promise<ConflictResolution> {
-  console.log(`\n${'!'.repeat(60)}`);
-  console.log('CONFLICTS DETECTED - The following files differ from source:');
-  console.log(`${'!'.repeat(60)}`);
-  for (const f of conflicts.sort()) {
-    console.log(`  → ${f}`);
-  }
-  console.log();
-  console.log('How would you like to handle these conflicts?');
-  console.log('  [b] Create backups (file.backup_N.ext) and overwrite');
-  console.log('  [o] Overwrite all (lose local changes)');
-  console.log('  [c] Cancel (make no changes)');
-  console.log();
-
-  while (true) {
-    const answer = await askQuestion('Choice [b/o/c]: ');
-    switch (answer.toLowerCase()) {
-      case 'b':
-        return 'backup';
-      case 'o':
-        return 'overwrite';
-      case 'c':
-        return 'cancel';
-      default:
-        console.log('Please enter b, o, or c');
-    }
-  }
-}
-
-function getNextBackupPath(filePath: string): string {
-  const dir = dirname(filePath);
-  const ext = extname(filePath);
-  const base = basename(filePath, ext);
-
-  // Find existing backups
-  let n = 1;
-  if (existsSync(dir)) {
-    const files = readdirSync(dir);
-    const backupPattern = new RegExp(`^${base}\\.backup_(\\d+)${ext.replace('.', '\\.')}$`);
-    for (const file of files) {
-      const match = file.match(backupPattern);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num >= n) n = num + 1;
-      }
-    }
-  }
-
-  return join(dir, `${base}.backup_${n}${ext}`);
 }
 
 function setupEnvoyShellFunction(): { added: boolean; shellRc: string | null } {
@@ -184,7 +112,6 @@ export async function cmdInit(target: string, autoYes: boolean = false): Promise
   // CLAUDE.md handling
   const targetClaudeMd = join(resolvedTarget, 'CLAUDE.md');
   const targetProjectMd = join(resolvedTarget, 'CLAUDE.project.md');
-  const sourceClaudeMd = join(allhandsRoot, 'CLAUDE.md');
 
   let claudeMdMigrated = false;
 
