@@ -32,7 +32,7 @@ The framework follows a layered architecture where each layer has distinct respo
 
 **Generic agent layer**: Surveyor and worker serve as fallbacks when no domain specialist matches. They follow the same protocols as specialists but without domain-specific skills loaded.
 
-**Hook layer**: Startup hooks [ref:.claude/hooks/startup.sh::e12e962] initialize context before the main agent receives any prompt. Validation scripts [ref:.claude/hooks/scripts/validate_artifacts.py::c15ff37] ensure configuration integrity. This layer runs without agent involvement, establishing invariants the framework depends on.
+**Hook layer**: Startup hooks [ref:.claude/hooks/startup.sh::e12e962] initialize context before the main agent receives any prompt. Validation scripts [ref:.claude/hooks/validate_artifacts.py::c15ff37] ensure configuration integrity. This layer runs without agent involvement, establishing invariants the framework depends on.
 
 ## Technologies
 

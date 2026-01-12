@@ -30,7 +30,6 @@ import {
 } from "../lib/index.js";
 import { watchForDone } from "../lib/watcher.js";
 import { withRetry, ORACLE_FALLBACKS } from "../lib/retry.js";
-import { recordOracleCall } from "../lib/observability.js";
 import {
   createProvider,
   getDefaultProvider,
@@ -138,15 +137,6 @@ abstract class OracleCommand extends BaseCommand {
       ORACLE_FALLBACKS[endpoint]
     );
     const durationMs = Math.round(performance.now() - start);
-
-    recordOracleCall({
-      provider: this.provider.config.name,
-      endpoint,
-      duration_ms: durationMs,
-      success: result.success,
-      retries: result.retries,
-    });
-
     return { result, durationMs };
   }
 

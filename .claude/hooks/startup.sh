@@ -4,7 +4,7 @@
 "$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" info > /dev/null 2>&1
 
 # Validate .claude/ artifacts (systemMessage JSON shown to user)
-python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/scripts/validate_artifacts.py"
+python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/validate_artifacts.py"
 
 # Release all in_progress prompts (stale from previous sessions)
 "$CLAUDE_PROJECT_DIR/.claude/envoy/envoy" plan release-all-prompts > /dev/null 2>&1

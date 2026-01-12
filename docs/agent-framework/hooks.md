@@ -14,9 +14,9 @@ Hooks address the gap between conversation start and agent readiness. Before the
 
 **Branch-aware mode detection**: The startup hook examines the current git branch to determine workflow mode. Main/master/develop branches trigger "Direct" mode (no planning required). Feature branches trigger plan initialization and status reporting. Quick/curator/docs prefixed branches bypass planning for their specific workflows. This contextual awareness means users don't need to specify mode - the framework infers it from branch conventions.
 
-**Artifact validation as early feedback**: The validate_artifacts script [ref:.claude/hooks/scripts/validate_artifacts.py::c15ff37] checks agent files for structural issues before the conversation begins. Missing frontmatter, name mismatches, and missing skill references surface as systemMessage JSON, alerting the user immediately rather than failing mid-workflow.
+**Artifact validation as early feedback**: The validate_artifacts script [ref:.claude/hooks/validate_artifacts.py::c15ff37] checks agent files for structural issues before the conversation begins. Missing frontmatter, name mismatches, and missing skill references surface as systemMessage JSON, alerting the user immediately rather than failing mid-workflow.
 
-**Agent scanning for configuration integrity**: The scan_agents script [ref:.claude/hooks/scripts/scan_agents.py::c15ff37] parses agent frontmatter to verify structure. It catches issues like skills referencing non-existent directories, ensuring agents won't fail at invocation time.
+**Agent scanning for configuration integrity**: The scan_agents script [ref:.claude/hooks/scan_agents.py::c15ff37] parses agent frontmatter to verify structure. It catches issues like skills referencing non-existent directories, ensuring agents won't fail at invocation time.
 
 **Background sync for external resources**: The startup hook clones or pulls claude-code-docs in the background. This keeps official Claude Code documentation current without blocking session start. The docs directory (~/.claude-code-docs) provides authoritative reference for the claude-code-patterns skill.
 

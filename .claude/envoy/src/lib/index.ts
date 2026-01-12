@@ -22,18 +22,8 @@ export {
   logError,
   logCommandStart,
   logCommandComplete,
-  recordMetric,
-  recordPlanCreated,
-  recordPlanCompleted,
-  recordPromptStarted,
-  recordPromptCompleted,
-  recordGateCompleted,
-  recordGeminiCall,
-  recordOracleCall,
-  recordDiscoveryCompleted,
-  recordDocumentationExtracted,
 } from "./observability.js";
-export type { LogLevel, LogEntry, MetricEvent } from "./observability.js";
+export type { LogLevel, LogEntry } from "./observability.js";
 
 // File watching
 export { watchForDone, watchForAnyDone } from "./watcher.js";

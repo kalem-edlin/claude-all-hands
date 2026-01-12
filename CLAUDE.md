@@ -19,7 +19,7 @@ Fallback to surveyor (discovery) or worker (implementation) when no domain speci
 
 ## Envoy Usage and Error Handling
 
-Always call envoy via `envoy <group> <command> [args]` - DO NOT use npx, tsx, ts-node or any other wrapper.
+Always call envoy via `envoy <group> <command> [args] --agent <agent_name>` - DO NOT use npx, tsx, ts-node or any other wrapper, nor any other path than "envoy" itself. Always attempt to add your agent name to envoy commands for visibility.
 
 Envoy commands fail in two ways:
 1. **stderr/non-zero exit**: Command crashed

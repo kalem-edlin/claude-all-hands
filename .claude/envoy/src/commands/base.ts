@@ -29,7 +29,6 @@ import { readFileSync } from "fs";
 import {
   logCommandStart,
   logCommandComplete,
-  recordMetric,
 } from "../lib/observability.js";
 
 export interface CommandResult {
@@ -78,21 +77,28 @@ export abstract class BaseCommand {
   /**
    * Instrumented execution wrapper - logs start/complete and metrics.
    */
-  async executeWithLogging(args: Record<string, unknown>): Promise<CommandResult> {
+  async executeWithLogging(
+    args: Record<string, unknown>,
+    agent?: string
+  ): Promise<CommandResult> {
     const start = performance.now();
-    logCommandStart(this.commandName, args);
+    logCommandStart(this.commandName, args, agent);
 
     try {
       const result = await this.execute(args);
       const duration = Math.round(performance.now() - start);
       // Include result.data in context on success for traceability
-      logCommandComplete(this.commandName, result.status, duration, result.data);
+      logCommandComplete(this.commandName, result.status, duration, result.data, agent);
       return result;
     } catch (e) {
       const duration = Math.round(performance.now() - start);
-      logCommandComplete(this.commandName, "error", duration, {
-        error: e instanceof Error ? e.message : String(e),
-      });
+      logCommandComplete(
+        this.commandName,
+        "error",
+        duration,
+        { error: e instanceof Error ? e.message : String(e) },
+        agent
+      );
       throw e;
     }
   }

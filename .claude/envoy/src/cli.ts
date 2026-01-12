@@ -58,7 +58,8 @@ async function main(): Promise<void> {
       cmd.groupName = groupName; // Set group name for logging
       const subCmd = group
         .command(subcmdName)
-        .description(cmd.description);
+        .description(cmd.description)
+        .option("--agent <name>", "Agent name for logging visibility");
 
       // Let each command define its own arguments
       cmd.defineArguments(subCmd);
@@ -68,6 +69,10 @@ async function main(): Promise<void> {
         // We need to extract the options object (second to last argument)
         const options = actionArgs[actionArgs.length - 2] as Record<string, unknown>;
         const positionalArgs = actionArgs.slice(0, -2);
+
+        // Extract agent from options (don't include in args)
+        const agent = options.agent as string | undefined;
+        delete options.agent;
 
         // Get argument names from command definition
         const argNames = subCmd.registeredArguments.map(arg => arg.name());
@@ -82,7 +87,7 @@ async function main(): Promise<void> {
 
         try {
           // Use instrumented execution
-          const result = await cmd.executeWithLogging(args);
+          const result = await cmd.executeWithLogging(args, agent);
           console.log(JSON.stringify(result, null, 2));
         } catch (e) {
           console.log(

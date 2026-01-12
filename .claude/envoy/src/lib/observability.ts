@@ -1,6 +1,6 @@
 /**
  * Observability system for claude-envoy.
- * Dual system: metrics.jsonl (analytics) + envoy.log (detailed traces).
+ * Log-based tracing via envoy.log.
  */
 
 import { appendFileSync, mkdirSync, existsSync } from "fs";
@@ -20,6 +20,14 @@ export function getPlanName(branch?: string | null): string | undefined {
   return match ? match[1] : b;
 }
 
+// --- Constants ---
+
+/** Max string length before truncation in logs (default 200, configurable via env) */
+const MAX_LOG_STRING_LENGTH = parseInt(
+  process.env.ENVOY_LOG_MAX_STRING_LENGTH ?? "200",
+  10
+);
+
 // --- Types ---
 
 export type LogLevel = "info" | "warn" | "error";
@@ -30,20 +38,13 @@ export interface LogEntry {
   command: string;
   plan_name?: string;
   branch?: string;
-  caller?: string;
+  agent?: string;
   args?: Record<string, unknown>;
   result?: "success" | "error";
   duration_ms?: number;
   context?: Record<string, unknown>;
 }
 
-export interface MetricEvent {
-  type: string;
-  timestamp: string;
-  plan_name?: string;
-  branch?: string;
-  [key: string]: unknown;
-}
 
 // --- File Paths ---
 
@@ -55,10 +56,6 @@ function getLogPath(): string {
   return join(getObservabilityDir(), "envoy.log");
 }
 
-function getMetricsPath(): string {
-  return join(getObservabilityDir(), "metrics.jsonl");
-}
-
 // --- Ensure Directory Exists ---
 
 function ensureObservabilityDir(): void {
@@ -66,6 +63,34 @@ function ensureObservabilityDir(): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
+}
+
+// --- String Trimming ---
+
+/**
+ * Recursively trim all strings in an object/array to max length.
+ * Adds ellipsis when truncated.
+ */
+function trimStrings(value: unknown, maxLen = MAX_LOG_STRING_LENGTH): unknown {
+  if (value === null || value === undefined) return value;
+
+  if (typeof value === "string") {
+    return value.length > maxLen ? value.slice(0, maxLen) + "..." : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => trimStrings(item, maxLen));
+  }
+
+  if (typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      result[k] = trimStrings(v, maxLen);
+    }
+    return result;
+  }
+
+  return value;
 }
 
 // --- Logging ---
@@ -81,6 +106,13 @@ export function log(entry: Omit<LogEntry, "timestamp">): void {
     branch,
     plan_name: getPlanName(branch),
     ...entry,
+    // Trim long strings in args and context to prevent log bloat
+    args: entry.args
+      ? (trimStrings(entry.args) as Record<string, unknown>)
+      : undefined,
+    context: entry.context
+      ? (trimStrings(entry.context) as Record<string, unknown>)
+      : undefined,
   };
   try {
     appendFileSync(getLogPath(), JSON.stringify(fullEntry) + "\n");
@@ -127,11 +159,13 @@ export function logError(
  */
 export function logCommandStart(
   command: string,
-  args?: Record<string, unknown>
+  args?: Record<string, unknown>,
+  agent?: string
 ): void {
   log({
     level: "info",
     command,
+    agent,
     args,
     result: undefined,
     context: { phase: "start" },
@@ -145,130 +179,16 @@ export function logCommandComplete(
   command: string,
   result: "success" | "error",
   duration_ms: number,
-  context?: Record<string, unknown>
+  context?: Record<string, unknown>,
+  agent?: string
 ): void {
   log({
     level: result === "error" ? "error" : "info",
     command,
+    agent,
     result,
     duration_ms,
     context: { ...context, phase: "complete" },
   });
 }
 
-// --- Metrics ---
-
-/**
- * Append a metric event to metrics.jsonl.
- */
-export function recordMetric(
-  event: { type: string } & Record<string, unknown>
-): void {
-  ensureObservabilityDir();
-  const branch = typeof event.branch === "string" ? event.branch : getBranch();
-  const planName = typeof event.plan_name === "string" ? event.plan_name : getPlanName(branch);
-  const fullEvent: MetricEvent = {
-    ...event,
-    timestamp: new Date().toISOString(),
-    branch: branch || undefined,
-    plan_name: planName,
-  };
-  try {
-    appendFileSync(getMetricsPath(), JSON.stringify(fullEvent) + "\n");
-  } catch {
-    // Silent fail - observability should not break commands
-  }
-}
-
-// --- Specific Metric Events ---
-
-export function recordPlanCreated(data: {
-  mode: string;
-  prompt_count: number;
-  has_variants: boolean;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "plan_created", ...data });
-}
-
-export function recordPlanCompleted(data: {
-  duration_ms: number;
-  prompt_count: number;
-  total_iterations: number;
-  gemini_calls: number;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "plan_completed", ...data });
-}
-
-export function recordPromptStarted(data: {
-  prompt_num: number;
-  variant?: string | null;
-  specialist?: string;
-  is_debug: boolean;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "prompt_started", ...data });
-}
-
-export function recordPromptCompleted(data: {
-  prompt_num: number;
-  variant?: string | null;
-  duration_ms: number;
-  iterations: number;
-  review_passes: number;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "prompt_completed", ...data });
-}
-
-export function recordGateCompleted(data: {
-  gate_type: string;
-  duration_ms: number;
-  user_refinements_count: number;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "gate_completed", ...data });
-}
-
-export function recordGeminiCall(data: {
-  endpoint: "audit" | "review" | "ask";
-  duration_ms: number;
-  success: boolean;
-  retries: number;
-  verdict?: string;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "gemini_call", ...data });
-}
-
-export function recordOracleCall(data: {
-  provider: string;
-  endpoint: string;
-  duration_ms: number;
-  success: boolean;
-  retries: number;
-  verdict?: string;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "oracle_call", ...data });
-}
-
-export function recordDiscoveryCompleted(data: {
-  specialist: string;
-  approach_count: number;
-  variant_count: number;
-  question_count: number;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "discovery_completed", ...data });
-}
-
-export function recordDocumentationExtracted(data: {
-  prompt_num: number;
-  variant?: string | null;
-  files_affected: number;
-  plan_name?: string;
-}): void {
-  recordMetric({ type: "documentation_extracted", ...data });
-}
