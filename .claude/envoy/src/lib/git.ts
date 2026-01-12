@@ -127,6 +127,14 @@ export function getProjectRoot(): string {
 }
 
 /**
+ * Get the repo's root directory name (e.g., "claude-agents").
+ */
+export function getRepoName(): string {
+  const root = getProjectRoot();
+  return root.split("/").pop() || "";
+}
+
+/**
  * Get the plan directory path for current branch.
  */
 export function getPlanDir(cwd?: string): string {
