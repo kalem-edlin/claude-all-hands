@@ -8,6 +8,7 @@
     ".claude/envoy/**",
     ".claude/output-styles/**",
     ".claude/settings.json",
+    ".claude/statusline.sh",
     "CLAUDE.md",
     "CLAUDE.project.md"
   ],
