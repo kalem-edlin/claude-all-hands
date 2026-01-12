@@ -95,7 +95,7 @@ When creating/modifying agents:
 </agent_building>
 
 <envoy_curation>
-Envoy replaces MCP servers for external tool access. Self-documenting via help commands. Foundational to agentic workflow. Envoy will process large information sources responding consicely and effectively to the calling agent.
+Envoy replaces MCP servers for external tool access. Self-documenting via help commands. Foundational to agentic workflow. Envoy will process large information sources responding concisely and effectively to the calling agent.
 
 When extending envoy:
 - Check existing patterns in .claude/envoy/

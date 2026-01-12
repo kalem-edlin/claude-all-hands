@@ -36,7 +36,7 @@ The framework follows a layered architecture where each layer has distinct respo
 
 ## Technologies
 
-The framework builds on Claude Code's native capabilities: the Task tool for subagent delegation, markdown files for agent definitions, YAML frontmatter for configuration. Envoy provides a CLI interface for plan management, git operations, and external service integration (Gemini for audits, Perplexity for research). Git worktrees enable isolated implementation branches without filesystem conflicts.
+The framework builds on Claude Code's native capabilities: the Task tool for subagent delegation, markdown files for agent definitions, YAML frontmatter for configuration. Envoy provides a CLI interface for plan management, git operations, and external service integration (Oracle for audits, Perplexity for research). Git worktrees enable isolated implementation branches without filesystem conflicts.
 
 ## Use Cases
 

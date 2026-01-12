@@ -71,6 +71,18 @@ A team starting a new project runs init via [ref:src/commands/init.ts:cmdInit:d5
 
 When the source framework receives improvements, maintainers of consumer repos run update. The command detects conflicts, offers backup/overwrite/cancel options, and preserves project-specific files. Files removed from source are flagged for deletion in the target.
 
+### Commands
+
+```bash
+# Initialize allhands in a target repo
+claude-all-hands init <target-path>
+claude-all-hands init <target-path> --yes  # Auto-overwrite conflicts
+
+# Update current repo from allhands source
+claude-all-hands update
+claude-all-hands update --yes  # Auto-overwrite conflicts
+```
+
 ### Contributing Improvements Back
 
 Since sync is one-way, teams wanting to contribute improvements create PRs against the source repository directly. This follows standard open-source contribution patterns rather than automatic sync-back, making the contribution process explicit and reviewable.
