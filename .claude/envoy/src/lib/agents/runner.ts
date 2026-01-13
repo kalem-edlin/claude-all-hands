@@ -32,6 +32,7 @@ export class AgentRunner {
 
     try {
       const { client, server: srv } = await createOpencode({
+        port: 0, // Let OS pick available port to avoid conflicts in parallel runs
         timeout: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         config: config.model ? { model: config.model } : undefined,
       });
